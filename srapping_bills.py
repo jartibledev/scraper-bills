@@ -1,6 +1,7 @@
 import os
 import pdfplumber
 import pandas as pd
+import re
 
 # 1. Configuración de rutas
 directorio_base = os.path.dirname(os.path.abspath(__file__))
@@ -20,9 +21,9 @@ def extraer_datos_factura(ruta_pdf):
         for line in lines:
             if "FACTURA:" in line:
                 datos['Numero'] = line.split("#")[1].strip()
-            if "Total a pagar:" in line:
-                datos['Total'] = line.split("Total a pagar:")[1].strip()
-        
+            match = re.search(r"Total a pagar:\s*(\d+\.\d{2})", texto)
+            if match:
+               datos['Total'] = match.group(1)
         datos['Archivo'] = os.path.basename(ruta_pdf)
     return datos
 
