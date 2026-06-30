@@ -32,24 +32,28 @@ class GUI(ctk.CTk):
     def seleccionar_destino(self):
         self.ruta_destino = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
         print(f"Destino: {self.ruta_destino}")
-
-    def extraer_datos_factura(self, ruta_pdf):
-        datos = {}
+    
+    def extraer_columna_importe(ruta_pdf):
         with pdfplumber.open(ruta_pdf) as pdf:
-            texto = pdf.pages[0].extract_text()
-            patterns = {
-                "Subtotal": r"Subtotal:\s*(\d+\.\d{2})",
-                "Impuestos": r"(Impuestos|Tax|VAT):\s*(\d+\.\d{2})",
-                "Total": r"(Total a pagar|Total to pay|:\s*(\d+\.\d{2})"
-                }
-            for campo, patron in patterns.items():
-                match = re.search(patron, texto, re.IGNORECASE) # re.IGNORECASE ayuda por si viene como "total" o "TOTAL"
-                if match:
-                    datos[campo] = match.group(1)
-                else:
-                    datos[campo] = None # O "0.00" si prefieres
-            datos['Archivo'] = os.path.basename(ruta_pdf)
-        return datos
+            pagina = pdf.pages[0]
+            tabla = pagina.extract_table(table_settings={
+                "vertical_strategy": "text", 
+                "horizontal_strategy": "text"
+            }) # Obtienes una lista de filas
+            
+            if not tabla: return None
+            
+            # 1. Buscamos el índice de la columna "Importe" en la primera fila
+            encabezados = tabla[0]
+            try:
+                indice_importe = encabezados.index("Importe")
+            except ValueError:
+                print("No se encontró la columna 'Importe'")
+                return None
+            
+            # 2. Extraemos el valor de esa columna en todas las filas siguientes
+            importes = [fila[indice_importe] for fila in tabla[1:] if fila[indice_importe]]
+            return importes
 
     def procesar_todo(self):
         if not self.ruta_origen or not self.ruta_destino:
