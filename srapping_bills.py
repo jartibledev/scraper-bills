@@ -33,27 +33,33 @@ class GUI(ctk.CTk):
         self.ruta_destino = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
         print(f"Destino: {self.ruta_destino}")
     
-    def extraer_columna_importe(self, ruta_pdf):
+    def extraer_datos_tabla(self, ruta_pdf):
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
             tabla = pagina.extract_table(table_settings={
                 "vertical_strategy": "text", 
                 "horizontal_strategy": "text"
-            }) # Obtienes una lista de filas
+            })
             
-            if not tabla: return None
+            if not tabla: return []
             
-            # 1. Buscamos el índice de la columna "Importe" en la primera fila
+            # 1. Identificar columnas (Asumimos que la fila 0 tiene los nombres)
             encabezados = tabla[0]
-            try:
-                indice_importe = encabezados.index("Importe")
-            except ValueError:
-                print("No se encontró la columna 'Importe'")
-                return None
+            # Creamos un mapa de índice: {'Cantidad': 0, 'Importe': 2}
+            idx_map = {nombre: i for i, nombre in enumerate(encabezados) if nombre in ["Cantidad", "Importe"]}
             
-            # 2. Extraemos el valor de esa columna en todas las filas siguientes
-            importes = [fila[indice_importe] for fila in tabla[1:] if fila[indice_importe]]
-            return importes
+            resultados = []
+            # 2. Iterar sobre las filas (saltando la fila 0 de encabezados)
+            for fila in tabla[1:]:
+                fila_data = {}
+                for nombre, indice in idx_map.items():
+                    # Obtenemos el valor de la celda
+                    fila_data[nombre] = fila[indice]
+                
+                if fila_data: # Solo añadir si tiene datos
+                    resultados.append(fila_data)
+                    
+            return resultados
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         # Si la lista está vacía, no hacemos nada
