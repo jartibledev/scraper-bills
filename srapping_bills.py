@@ -41,16 +41,24 @@ class GUI(ctk.CTk):
     def extraer_todas_las_tablas(self, ruta_pdf):
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
+            texto = pagina.extract_text()
+            print(f"--- Diagnóstico para {os.path.basename(ruta_pdf)} ---")
+            print("Texto detectado en la página:")
+            print(texto[:200])
             
             # 'extract_tables' detecta múltiples tablas separadas
             tablas = pagina.extract_tables(table_settings={
                 "vertical_strategy": "text", 
                 "horizontal_strategy": "text"
             })
+            print(f"Número de tablas detectadas: {len(tablas)}")
             
             datos_totales = []
+            for i, tabla in enumerate(tablas):
+                print(f"Encabezados de la tabla {i}: {tabla[0]}")
             
             for tabla in tablas:
+               
                 # tabla[0] son los encabezados
                 encabezados = tabla[0]
                 
@@ -67,7 +75,7 @@ class GUI(ctk.CTk):
                         if any(val != "" for val in fila_dict.values()):
                             datos_totales.append(fila_dict)
 
-            print( "Datos:" + datos_totales)                
+            print( f"Datos: {datos_totales}" )                
             return datos_totales
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
