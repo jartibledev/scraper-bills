@@ -41,41 +41,32 @@ class GUI(ctk.CTk):
     def extraer_todas_las_tablas(self, ruta_pdf):
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
-            texto = pagina.extract_text()
-            print(f"--- Diagnóstico para {os.path.basename(ruta_pdf)} ---")
-            print("Texto detectado en la página:")
-            print(texto[:200])
-            
-            # 'extract_tables' detecta múltiples tablas separadas
-            tablas = pagina.extract_tables(table_settings={
-                "vertical_strategy": "text", 
-                "horizontal_strategy": "text"
-            })
-            print(f"Número de tablas detectadas: {len(tablas)}")
+            tablas = pagina.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
             
             datos_totales = []
-            for i, tabla in enumerate(tablas):
-                print(f"Encabezados de la tabla {i}: {tabla[0]}")
             
             for tabla in tablas:
-               
-                # tabla[0] son los encabezados
-                encabezados = tabla[0]
+                fila_cabecera_idx = -1
                 
-                columnas_necesarias = ["Cantidad", "Importe"]
-
-                if encabezados and all(col in encabezados for col in columnas_necesarias):
-                    idx_map = {n: i for i, n in enumerate(encabezados) if n in columnas_necesarias}
+                # 1. Buscamos en qué fila aparece la palabra "Importe"
+                for i, fila in enumerate(tabla):
+                    # Convertimos la fila a texto (cuidando valores None)
+                    fila_texto = [str(celda).lower() if celda else "" for celda in fila]
+                    if any("importe" in celda for celda in fila_texto):
+                        fila_cabecera_idx = i
+                        encabezados = fila # Esta es nuestra fila de encabezados real
+                        break
+                
+                # 2. Si encontramos la fila, procesamos desde la siguiente
+                if fila_cabecera_idx != -1:
+                    idx_map = {i: nombre for i, nombre in enumerate(encabezados) if nombre and "importe" in str(nombre).lower()}
                     
-                    for fila in tabla[1:]:
-                        # Usamos 'fila[indice] or ""' para evitar errores si la celda está vacía
-                        fila_dict = {nombre: (fila[indice] if fila[indice] is not None else "") for nombre, indice in idx_map.items()}
-                        
-                        # Solo añadimos si al menos uno de los valores tiene contenido real
-                        if any(val != "" for val in fila_dict.values()):
+                    for fila in tabla[fila_cabecera_idx + 1:]:
+                        # Extraemos los datos basándonos en el índice encontrado
+                        fila_dict = {f"Importe_{i}": fila[i] for i in idx_map.keys() if fila[i]}
+                        if fila_dict:
                             datos_totales.append(fila_dict)
-
-            print( f"Datos: {datos_totales}" )                
+                            
             return datos_totales
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
