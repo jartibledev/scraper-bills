@@ -39,6 +39,13 @@ class GUI(ctk.CTk):
         print(f"Destino: {self.ruta_destino}")
     
     def extraer_todas_las_tablas(self, ruta_pdf):
+        # 1. Definimos los alias dentro o fuera de la función
+        alias_columnas = {
+            "Importe": ["importe", "total", "amount", "price", "precio", "subtotal"],
+            "Cantidad": ["cantidad", "units", "uds", "qty", "cantidad total"],
+            "Concepto": ["concepto", "concept", "descripcion", "description"]
+        }
+        
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
             tablas = pagina.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
@@ -46,41 +53,51 @@ class GUI(ctk.CTk):
             datos_totales = []
             
             for tabla in tablas:
+                idx_map = {}
                 fila_cabecera_idx = -1
                 
-                # 1. Buscamos en qué fila aparece la palabra "Importe"
+                # Buscamos la fila que contiene los encabezados
                 for i, fila in enumerate(tabla):
-                    # Convertimos la fila a texto (cuidando valores None)
-                    fila_texto = [str(celda).lower() if celda else "" for celda in fila]
-                    if any("importe" in celda for celda in fila_texto):
+                    fila_texto = [str(c).lower() if c else "" for c in fila]
+                    # Si al menos una celda contiene alguno de nuestros alias
+                    if any(any(a in celda for lista in alias_columnas.values() for a in lista) for celda in fila_texto):
                         fila_cabecera_idx = i
-                        encabezados = fila # Esta es nuestra fila de encabezados real
+                        # Mapeamos qué índice corresponde a qué estándar
+                        for col_idx, celda in enumerate(fila_texto):
+                            for estandar, alias_list in alias_columnas.items():
+                                if any(a in celda for a in alias_list):
+                                    idx_map[col_idx] = estandar
                         break
                 
-                # 2. Si encontramos la fila, procesamos desde la siguiente
+                # Si encontramos encabezados, extraemos los datos
                 if fila_cabecera_idx != -1:
-                    idx_map = {i: nombre for i, nombre in enumerate(encabezados) if nombre and "importe" in str(nombre).lower()}
-                    
                     for fila in tabla[fila_cabecera_idx + 1:]:
-                        # Extraemos los datos basándonos en el índice encontrado
-                        fila_dict = {f"Importe_{i}": fila[i] for i in idx_map.keys() if fila[i]}
+                        # Usamos los alias para construir el diccionario
+                        fila_dict = {idx_map[i]: fila[i] for i in idx_map.keys() if i < len(fila) and fila[i]}
                         if fila_dict:
                             datos_totales.append(fila_dict)
                             
             return datos_totales
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
-        # Si la lista está vacía, no hacemos nada
         if not nueva_lista_datos: return
 
-        if os.path.exists(ruta_excel):
-            df_existente = pd.read_excel(ruta_excel)
-        else:
-            df_existente = pd.DataFrame(columns=["Importe"])
+        try:
+            if os.path.exists(ruta_excel):
+                df_existente = pd.read_excel(ruta_excel)
+            else:
+                df_existente = pd.DataFrame(columns=["Concepto", "Cantidad", "Importe"])
 
-        df_nuevos = pd.DataFrame(nueva_lista_datos)
-        df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
-        df_final.to_excel(ruta_excel, index=False)
+            df_nuevos = pd.DataFrame(nueva_lista_datos)
+            df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
+            df_final.to_excel(ruta_excel, index=False)
+            
+        except PermissionError:
+            messagebox.showerror("Error de Permisos", 
+                                 "No puedo escribir en el archivo porque está abierto en Excel.\n"
+                                 "Por favor, cierra el archivo y vuelve a intentarlo.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
         
     def procesar_todo(self):
         if not self.ruta_origen or not self.ruta_destino:
