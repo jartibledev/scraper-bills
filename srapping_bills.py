@@ -37,11 +37,17 @@ class GUI(ctk.CTk):
         datos = {}
         with pdfplumber.open(ruta_pdf) as pdf:
             texto = pdf.pages[0].extract_text()
-            if "FACTURA:" in texto:
-                datos['Numero'] = texto.split("FACTURA: #")[1].split()[0]
-            match = re.search(r"Total a pagar:\s*(\d+\.\d{2})", texto)
-            if match:
-                datos['Total'] = match.group(1)
+            patterns = {
+                "Subtotal": r"Subtotal:\s*(\d+\.\d{2})",
+                "Impuestos": r"(Impuestos|Tax|VAT):\s*(\d+\.\d{2})",
+                "Total": r"(Total a pagar|Total to pay|:\s*(\d+\.\d{2})"
+                }
+            for campo, patron in patterns.items():
+                match = re.search(patron, texto, re.IGNORECASE) # re.IGNORECASE ayuda por si viene como "total" o "TOTAL"
+                if match:
+                    datos[campo] = match.group(1)
+                else:
+                    datos[campo] = None # O "0.00" si prefieres
             datos['Archivo'] = os.path.basename(ruta_pdf)
         return datos
 
