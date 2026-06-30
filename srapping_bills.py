@@ -16,7 +16,7 @@ class GUI(ctk.CTk):
         self.ruta_origen = ""
         self.ruta_destino = ""
 
-        self.buttonSelectFolder = ctk.CTkButton(self, text="Seleccionar Carpeta", command=self.seleccionar_carpeta)
+        self.buttonSelectFolder = ctk.CTkButton(self, text="Seleccionar Factura", command=self.seleccionar_archivo)
         self.buttonSelectFolder.pack(pady=20)
 
         self.buttonDestinyExcel = ctk.CTkButton(self, text="Seleccionar Destino Excel", command=self.seleccionar_destino)
@@ -25,41 +25,50 @@ class GUI(ctk.CTk):
         self.btn_procesar = ctk.CTkButton(self, text="Procesar Facturas", command=self.procesar_todo, fg_color="green")
         self.btn_procesar.pack(pady=20)
 
-    def seleccionar_carpeta(self):
-        self.ruta_origen = filedialog.askdirectory()
-        print(f"Carpeta seleccionada: {self.ruta_origen}")
+    def seleccionar_archivo(self):
+        archivo_pdf = filedialog.askopenfilename(
+        title="Selecciona un archivo PDF",
+        filetypes=[("Archivos PDF", "*.pdf")]
+    )
+        if archivo_pdf:
+            self.ruta_origen = archivo_pdf
+            print(f"PDF seleccionado: {self.ruta_origen}")
 
     def seleccionar_destino(self):
         self.ruta_destino = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
         print(f"Destino: {self.ruta_destino}")
     
-    def extraer_datos_tabla(self, ruta_pdf):
+    def extraer_todas_las_tablas(self, ruta_pdf):
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
-            tabla = pagina.extract_table(table_settings={
+            
+            # 'extract_tables' detecta múltiples tablas separadas
+            tablas = pagina.extract_tables(table_settings={
                 "vertical_strategy": "text", 
                 "horizontal_strategy": "text"
             })
             
-            if not tabla: return []
+            datos_totales = []
             
-            # 1. Identificar columnas (Asumimos que la fila 0 tiene los nombres)
-            encabezados = tabla[0]
-            # Creamos un mapa de índice: {'Cantidad': 0, 'Importe': 2}
-            idx_map = {nombre: i for i, nombre in enumerate(encabezados) if nombre in ["Cantidad", "Importe"]}
-            
-            resultados = []
-            # 2. Iterar sobre las filas (saltando la fila 0 de encabezados)
-            for fila in tabla[1:]:
-                fila_data = {}
-                for nombre, indice in idx_map.items():
-                    # Obtenemos el valor de la celda
-                    fila_data[nombre] = fila[indice]
+            for tabla in tablas:
+                # tabla[0] son los encabezados
+                encabezados = tabla[0]
                 
-                if fila_data: # Solo añadir si tiene datos
-                    resultados.append(fila_data)
+                columnas_necesarias = ["Cantidad", "Importe"]
+
+                if encabezados and all(col in encabezados for col in columnas_necesarias):
+                    idx_map = {n: i for i, n in enumerate(encabezados) if n in columnas_necesarias}
                     
-            return resultados
+                    for fila in tabla[1:]:
+                        # Usamos 'fila[indice] or ""' para evitar errores si la celda está vacía
+                        fila_dict = {nombre: (fila[indice] if fila[indice] is not None else "") for nombre, indice in idx_map.items()}
+                        
+                        # Solo añadimos si al menos uno de los valores tiene contenido real
+                        if any(val != "" for val in fila_dict.values()):
+                            datos_totales.append(fila_dict)
+
+            print( "Datos:" + datos_totales)                
+            return datos_totales
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         # Si la lista está vacía, no hacemos nada
@@ -79,14 +88,24 @@ class GUI(ctk.CTk):
             messagebox.showwarning("Error", "Selecciona carpeta y destino primero")
             return
 
+        if not os.path.exists(self.ruta_origen):
+            messagebox.showerror("Error", "La ruta seleccionada no existe")
+            return
         
-        for nombre_archivo in os.listdir(self.ruta_origen):
-            if nombre_archivo.endswith(".pdf"):
-                ruta_completa = os.path.join(self.ruta_origen, nombre_archivo)
-                # Extraemos la lista de importes
-                datos = self.extraer_columna_importe(ruta_completa)
-                # Actualizamos el excel inmediatamente
-                self.actualizar_excel(datos, self.ruta_destino)
+        if self.ruta_origen.endswith(".pdf"):
+            # Procesar solo ese archivo directamente
+            datos = self.extraer_todas_las_tablas(self.ruta_origen)
+            self.actualizar_excel(datos, self.ruta_destino)
+            messagebox.showinfo("Éxito", "Archivo procesado")
+        
+        else : 
+            for nombre_archivo in os.listdir(self.ruta_origen):
+                if nombre_archivo.endswith(".pdf"):
+                    ruta_completa = os.path.join(self.ruta_origen, nombre_archivo)
+                    # Extraemos la lista de importes
+                    datos = self.extraer_todas_las_tablas(ruta_completa)
+                    # Actualizamos el excel inmediatamente
+                    self.actualizar_excel(datos, self.ruta_destino)
         
         messagebox.showinfo("Éxito", "Proceso terminado")
 
