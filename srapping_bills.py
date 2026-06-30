@@ -33,7 +33,7 @@ class GUI(ctk.CTk):
         self.ruta_destino = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
         print(f"Destino: {self.ruta_destino}")
     
-    def extraer_columna_importe(ruta_pdf):
+    def extraer_columna_importe(self, ruta_pdf):
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
             tabla = pagina.extract_table(table_settings={
@@ -54,23 +54,35 @@ class GUI(ctk.CTk):
             # 2. Extraemos el valor de esa columna en todas las filas siguientes
             importes = [fila[indice_importe] for fila in tabla[1:] if fila[indice_importe]]
             return importes
+        
+    def actualizar_excel(self, nueva_lista_datos, ruta_excel):
+        # Si la lista está vacía, no hacemos nada
+        if not nueva_lista_datos: return
 
+        if os.path.exists(ruta_excel):
+            df_existente = pd.read_excel(ruta_excel)
+        else:
+            df_existente = pd.DataFrame(columns=["Importe"])
+
+        df_nuevos = pd.DataFrame(nueva_lista_datos)
+        df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
+        df_final.to_excel(ruta_excel, index=False)
+        
     def procesar_todo(self):
         if not self.ruta_origen or not self.ruta_destino:
             messagebox.showwarning("Error", "Selecciona carpeta y destino primero")
             return
 
-        lista_facturas = []
+        
         for nombre_archivo in os.listdir(self.ruta_origen):
             if nombre_archivo.endswith(".pdf"):
                 ruta_completa = os.path.join(self.ruta_origen, nombre_archivo)
-                lista_facturas.append(self.extraer_datos_factura(ruta_completa))
-
-        if lista_facturas:
-            pd.DataFrame(lista_facturas).to_excel(self.ruta_destino, index=False)
-            messagebox.showinfo("Éxito", "Excel generado correctamente")
-        else:
-            messagebox.showwarning("Aviso", "No se encontraron PDFs")
+                # Extraemos la lista de importes
+                datos = self.extraer_columna_importe(ruta_completa)
+                # Actualizamos el excel inmediatamente
+                self.actualizar_excel(datos, self.ruta_destino)
+        
+        messagebox.showinfo("Éxito", "Proceso terminado")
 
 app = GUI()
 app.mainloop() # Nota: es mainloop() en minúsculas
