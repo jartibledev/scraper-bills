@@ -246,8 +246,7 @@ class GUI(ctk.CTk):
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
             df_final['Importe'] = pd.to_numeric(df_final['Importe'], errors='coerce').fillna(0)
             df_final = df_final[df_final['Importe'] != 0]
-
-            # 4. Guardar
+            
             with pd.ExcelWriter(ruta_excel, engine='xlsxwriter') as writer:
                 df_final.to_excel(writer, index=False, sheet_name='Facturas')
                 
@@ -256,11 +255,24 @@ class GUI(ctk.CTk):
                 worksheet = writer.sheets['Facturas']
                 formato_euro = workbook.add_format({'num_format': '#,##0.00 €'})
                 worksheet.set_column('C:C', 15, formato_euro)
+                worksheet.set_column('D:D', 15, formato_euro)
+                
                 
                 num_filas = len(df_final) + 1
-                worksheet.write(f'B{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
-                worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro)
-            
+                worksheet.write(f'A{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
+                worksheet.write(f'A{num_filas + 3}', 'IVA', workbook.add_format({'bold': True}))
+                worksheet.write(f'A{num_filas + 4}', 'SUBTOTAL DEL IVA', workbook.add_format({'bold': True}))
+                worksheet.write(f'A{num_filas + 5}', 'TOTAL SIN IMPUESTOS', workbook.add_format({'bold': True}))
+                worksheet.write(f'A{num_filas + 6}', 'TOTAL CON IMPUESTOS', workbook.add_format({'bold': True}))
+                worksheet.write_formula(f'B{num_filas + 2}', f'=SUM(B2:B{num_filas})')
+                worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro) 
+                worksheet.write_formula(f'D{num_filas + 2}', f'=SUM(D2:D{num_filas})', formato_euro)
+                worksheet.write_formula(f'C{num_filas + 3}', f'=SUM(C{num_filas + 2})*0.21', formato_euro)
+                worksheet.write_formula(f'D{num_filas + 3}', f'=SUM(D{num_filas + 2})*0.21', formato_euro)
+                worksheet.write_formula(f'D{num_filas + 4}', f'=SUM(C{num_filas + 3}, D{num_filas + 3})', formato_euro)
+                worksheet.write_formula(f'D{num_filas + 5}', f'=SUM(C{num_filas + 2},D{num_filas + 2})', formato_euro)
+                worksheet.write_formula(f'D{num_filas + 6}', f'=SUM(D{num_filas + 4}, D{num_filas + 5})', formato_euro)
+                
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
