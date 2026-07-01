@@ -4,6 +4,7 @@ import pdfplumber
 import pandas as pd
 import re
 from tkinter import filedialog, messagebox
+import numpy as np
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -174,40 +175,51 @@ class GUI(ctk.CTk):
         if not nueva_lista_datos: return
 
         try:
-            # 1. LIMPIEZA DE DATOS (Esto es lo que pedías)
-            # Convertimos a DataFrame para limpiar fácilmente
+            # 1. LIMPIEZA DE LOS DATOS NUEVOS
             df_nuevos = pd.DataFrame(nueva_lista_datos)
-            
-            # Reemplazamos los ceros y valores vacíos por NaN
-            import numpy as np
             df_nuevos.replace([0, '0', '', '0,0', '0,00', '0 €'], np.nan, inplace=True)
-            
-            # Eliminamos filas donde el Importe esté vacío (esto quita la basura)
             df_nuevos.dropna(subset=['Importe'], inplace=True)
+            
             cabeceras_a_evitar = ['concepto', 'importe', 'cantidad', 'limpieza', 'total']
             mask = ~df_nuevos.apply(lambda row: row.astype(str).str.lower().isin(cabeceras_a_evitar).any(), axis=1)
             df_nuevos = df_nuevos[mask]
 
-            total_calculado = df_nuevos['Importe'].sum()
-            fila_total = {"Concepto": "TOTAL GENERAL", "Importe": total_calculado}
-            df_final = pd.concat([df_nuevos, pd.DataFrame([fila_total])], ignore_index=True)
-            # 2. LÓGICA DE ACTUALIZACIÓN
+            # 2. CARGAR DATOS EXISTENTES Y CONCATENAR
             if os.path.exists(ruta_excel):
                 df_existente = pd.read_excel(ruta_excel)
             else:
                 df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
 
-            # Concatenamos el ya limpio df_nuevos
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
-            df_final.to_excel(ruta_excel, index=False)
-            
+            print(df_final['Importe'].dtype)
+            # 3. GUARDAR EL ARCHIVO FINAL CON LA FÓRMULA (Una sola vez)
+            with pd.ExcelWriter(ruta_excel, engine='xlsxwriter') as writer:
+                # 1. Aseguramos que la columna 'Importe' sea numérica
+                # Si hay errores (como texto), los convierte en NaN y luego los llenamos con 0
+                df_final['Importe'] = pd.to_numeric(df_final['Importe'], errors='coerce').fillna(0)
+                
+                df_final.to_excel(writer, index=False, sheet_name='Facturas')
+                
+                workbook = writer.book
+                worksheet = writer.sheets['Facturas']
+                
+                # 2. Formato de moneda
+                formato_euro = workbook.add_format({'num_format': '#,##0.00 €'})
+                
+                # 3. Aplicamos el formato a la columna C
+                worksheet.set_column('C:C', 15, formato_euro)
+                
+                # 4. Escribir la fórmula y forzar el resultado
+                ultima_fila = len(df_final) 
+                worksheet.write_formula(f'C{ultima_fila + 1}', f'=SUM(C2:C{ultima_fila})', formato_euro)
+
         except PermissionError:
             messagebox.showerror("Error de Permisos", 
-                                 "No puedo escribir en el archivo porque está abierto en Excel.\n"
-                                 "Por favor, cierra el archivo y vuelve a intentarlo.")
+                                "No puedo escribir en el archivo porque está abierto en Excel.\n"
+                                "Por favor, cierra el archivo y vuelve a intentarlo.")
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
-        
+            
     def procesar_todo(self):
         if not self.ruta_origen or not self.ruta_destino:
             messagebox.showwarning("Error", "Selecciona carpeta y destino primero")
