@@ -52,6 +52,7 @@ class GUI(ctk.CTk):
         
         return texto_total
 
+    
     def extraer_todas_las_tablas(self, ruta_pdf):
         alias_columnas = {
             "Importe": ["importe", "total", "amount", "price", "precio", "subtotal"],
@@ -80,32 +81,11 @@ class GUI(ctk.CTk):
                         if fila_dict:
                             todas_las_filas.append(fila_dict)
 
-           # 2. Pre-calcular las reservas globales (para no buscarlas en cada fila)
-        texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
-        texto_limpio = " ".join(texto_total_pdf.split())
-        print (texto_limpio)
-        patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
-        reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
-        print (reservas_encontradas)
-        array_plano = [m.group(0) for m in reservas_encontradas]
-        print (array_plano)
+
 
         
         
          # 2. Pre-calcular las reservas globales (para no buscarlas en cada fila)
-        texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
-        texto_limpio = " ".join(texto_total_pdf.split())
-        print (texto_limpio)
-        patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
-        reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
-        print (reservas_encontradas)
-        array_plano = [m.group(0) for m in reservas_encontradas]
-        print (array_plano)
-
-        
-        
-        datos_finales = []
-       # 2. Pre-calcular las reservas globales (para no buscarlas en cada fila)
         texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
         texto_limpio = " ".join(texto_total_pdf.split())
         print (texto_limpio)
@@ -123,49 +103,65 @@ class GUI(ctk.CTk):
                 precios_limpieza.append(fila.get("Importe", 50))
             else:
                 precios_limpieza.append(0)
-        
-        print(precios_limpieza)
-        
-
         # Mantenemos solo los elementos que NO son cero
         precios = [x for x in precios_limpieza if x != 0]
         print (precios)
+        lista_precios_limpieza = [ float (precio.replace('€', '').replace(',', '.').strip())
+                                  for precio in precios
+                                  ]
+        print (lista_precios_limpieza)
+        precios_reserva = []
+        for fila in todas_las_filas:
+            precio = fila.get("Importe", "")
+            if precios_limpieza[0] != precio:
+                precios_reserva.append(fila.get("Importe"))
+        set_reserva = set(precios)
+        reserva = [x for x in precios_reserva if x not in set_reserva] 
+        
+        lista_precios_reserva = []
+        for v in reserva:
+            try:
+                if isinstance(v, (int, float)):
+                    number = float(v)
+                elif isinstance(v, str):
+                    clean= v.replace('€', '').replace(',','.').strip()
+                    number = float(clean)
+                    
+                else:
+                    continue
+                if number > 0:
+                    lista_precios_reserva.append(number)
+            except (ValueError, TypeError):
+                continue
+            
+
+                                  
+        print (lista_precios_reserva)            
+        
+        
 
         # Resultado: [50, 100, 75]
         datos_finales = []
         
-        # 3. Procesar cada fila individualmente
-        for fila in todas_las_filas:
+        
+        print(len(precios))
+        
+        for i, fila in enumerate(todas_las_filas):
             concepto_raw = str(fila.get("Concepto", ""))
             importe_raw = fila.get("Importe") or None
-            texto_low = concepto_raw.lower()
-            if precios[0] == importe_raw :
-                importe_raw = None
-            print (importe_raw)
             
             fila_procesada = {
-                "Concepto": concepto_raw,
-                "Limpieza": "",
-                "Importe": importe_raw,
-                
+                "Concepto": array_plano[i] if i < len(array_plano) else None,
+                "Limpieza": precios[i] if i < len(precios) else None,
+                "Importe": importe_raw,    
             }
+            print(fila_procesada["Concepto"])
+            print(fila_procesada["Limpieza"])
+            print(fila_procesada["Importe"])
             
-            # Primero intentamos identificar si es una reserva
-            es_reserva = False
-            for i, fila in enumerate(todas_las_filas):
-                # Si aún quedan reservas en el array, se asigna la siguiente
-                if i < len(array_plano):
-                    fila["Concepto"] = array_plano[i]
-                    fila_procesada["Limpieza"] = precios[i]
-                    
-                else:
-                    fila["Concepto"] = ""
-                if i < len(precios):
-                    fila_procesada["Limpieza"] = precios[i]
-                    
             
             # Si no fue reserva, comprobamos si es limpieza
-        if importe_raw != 0 and importe_raw != "":
+            
             datos_finales.append(fila_procesada)
                     
         
@@ -178,12 +174,24 @@ class GUI(ctk.CTk):
         if not nueva_lista_datos: return
 
         try:
+            # 1. LIMPIEZA DE DATOS (Esto es lo que pedías)
+            # Convertimos a DataFrame para limpiar fácilmente
+            df_nuevos = pd.DataFrame(nueva_lista_datos)
+            
+            # Reemplazamos los ceros y valores vacíos por NaN
+            import numpy as np
+            df_nuevos.replace([0, '0', '', '0,0', '0,00', '0 €'], np.nan, inplace=True)
+            
+            # Eliminamos filas donde el Importe esté vacío (esto quita la basura)
+            df_nuevos.dropna(subset=['Importe'], inplace=True)
+            
+            # 2. LÓGICA DE ACTUALIZACIÓN
             if os.path.exists(ruta_excel):
                 df_existente = pd.read_excel(ruta_excel)
             else:
-                df_existente = pd.DataFrame(columns=["Concepto", "Cantidad", "Importe"])
+                df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
 
-            df_nuevos = pd.DataFrame(nueva_lista_datos)
+            # Concatenamos el ya limpio df_nuevos
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
             df_final.to_excel(ruta_excel, index=False)
             
