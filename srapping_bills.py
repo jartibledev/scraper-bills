@@ -212,9 +212,9 @@ class GUI(ctk.CTk):
                 formato_euro = workbook.add_format({'num_format': '#,##0.00 €'})
                 worksheet.set_column('C:C', 15, formato_euro)
                 
-                num_filas = len(df_final)
+                num_filas = len(df_final) + 1
                 worksheet.write(f'B{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
-                worksheet.write_formula(f'C{num_filas + 2}', '=SUM(C2:C1000)', formato_euro)
+                worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro)
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
