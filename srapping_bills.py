@@ -42,9 +42,18 @@ class GUI(ctk.CTk):
 
         match_date_and_code = re.search(r'Ref Reserva:\s(?P<codigo>\d{8,})\s\((?P<fecha_inicio>\d{1,2}/\d{1,2}/\d{2,4})\s-\s(?P<fecha_fin>\d{1,2}/\d{1,2}/\d{2,4})\)')
 
-
+    def extraer_texto_completo(self, pdf_path):
+        
+        texto_total = ""
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                # Extrae el texto plano de toda la página
+                texto_total += page.extract_text() + "\n"
+        
+        return texto_total
 
     def extraer_todas_las_tablas(self, ruta_pdf):
+        print ( self.extraer_texto_completo(ruta_pdf))
         # 1. Definimos los alias dentro o fuera de la función
         alias_columnas = {
             "Importe": ["importe", "total", "amount", "price", "precio", "subtotal"],
@@ -103,10 +112,15 @@ class GUI(ctk.CTk):
                         texto_bruto = str(fila_dict["Concepto"])
                         texto_limpio = " ".join(texto_acumulado.split())
                         etiqueta_encontrada = ""
-                        print ( "Este es el texto acumulado: " + texto_acumulado )
-                        print(f"DEBUG - Texto analizado total: '{texto_limpio}'")
+                        texto_completo = self.extraer_texto_completo(ruta_pdf)
+                        patron = r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+                        match = re.search(patron, texto_completo, re.IGNORECASE | re.DOTALL)
                         booking= re.search(r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)', texto_acumulado, re.IGNORECASE) 
-                        print(f'Data booking: {booking}')
+                        if match:
+                            print(f"¡Encontrado!: {match.group(0)}")
+                        else:
+                            print("Sigue sin aparecer. El PDF podría ser una imagen escaneada.")
+                        
                         resultado_booking = f"RESERVA {booking.group(1)} ({booking.group(2)} - {booking.group(3)})" if booking else ""
                         if not booking:
                                 
