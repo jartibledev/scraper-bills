@@ -175,43 +175,46 @@ class GUI(ctk.CTk):
         if not nueva_lista_datos: return
 
         try:
-            # 1. LIMPIEZA DE DATOS NUEVOS
+            # 1. Preparar datos nuevos
             df_nuevos = pd.DataFrame(nueva_lista_datos)
-            df_nuevos.replace([0, '0', '', '0,0', '0,00', '0 €'], np.nan, inplace=True)
+            df_nuevos.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
             df_nuevos.dropna(subset=['Importe'], inplace=True)
-            
-            # 2. CARGAR Y LIMPIAR DATOS EXISTENTES
+
+            # 2. Cargar datos existentes de forma segura
             if os.path.exists(ruta_excel):
-                df_existente = pd.read_excel(ruta_excel)
-                # IMPORTANTE: Limpiar también los datos que ya estaban en el Excel
-                df_existente.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
-                df_existente.dropna(subset=['Importe'], inplace=True)
-                
-                # Filtrar filas "TOTAL" ignorando mayúsculas y espacios
-                df_existente = df_existente[~df_existente.iloc[:, 0].astype(str).str.contains('TOTAL', case=False, na=False)]
+                try:
+                    df_existente = pd.read_excel(ruta_excel)
+                    # Forzamos las columnas si el archivo existe pero está vacío/mal formado
+                    if df_existente.empty or 'Importe' not in df_existente.columns:
+                        df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
+                    else:
+                        # Si tiene datos, limpiamos los "TOTAL" y ceros
+                        df_existente.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
+                        df_existente.dropna(subset=['Importe'], inplace=True)
+                        df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('TOTAL', case=False, na=False)]
+                except:
+                    df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
             else:
                 df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
 
-            # 3. CONCATENAR
+            # 3. Concatenar y asegurar tipos numéricos
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
-            
-            # Convertir Importe a número real y eliminar ceros sobrantes
             df_final['Importe'] = pd.to_numeric(df_final['Importe'], errors='coerce').fillna(0)
             df_final = df_final[df_final['Importe'] != 0]
 
-            # 4. GUARDAR
+            # 4. Guardar
             with pd.ExcelWriter(ruta_excel, engine='xlsxwriter') as writer:
                 df_final.to_excel(writer, index=False, sheet_name='Facturas')
                 
+                # Formato y fórmula
                 workbook = writer.book
                 worksheet = writer.sheets['Facturas']
                 formato_euro = workbook.add_format({'num_format': '#,##0.00 €'})
                 worksheet.set_column('C:C', 15, formato_euro)
                 
-                # 5. FÓRMULA SEGURA (Rango fijo para evitar referencia circular)
-                num_filas = len(df_final) + 1
+                num_filas = len(df_final)
                 worksheet.write(f'B{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
-                worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro)
+                worksheet.write_formula(f'C{num_filas + 2}', '=SUM(C2:C1000)', formato_euro)
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
