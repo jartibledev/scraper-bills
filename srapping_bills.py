@@ -53,6 +53,29 @@ class GUI(ctk.CTk):
         
         return texto_total
 
+    def calcular_diferencia_fechas(self, lista_cadenas):
+        resultados = []
+        
+        for item in lista_cadenas:
+            # 1.1 Extraer solo los números de los días (lo que está antes de la primera '/')
+            # La regex '\d{2}' busca grupos de dos dígitos. 
+            # En '(23/07/2026 - 27/07/2026)', esto encontrará '23' y '27'.
+            dias = re.findall(r'(\d{2})/', item)
+            
+            # 1.2 y 1.3 Convertir a lista de ints
+            if len(dias) >= 2:
+                dias_int = [int(d) for d in dias]
+                
+                # 2. Restarlos (27 - 23)
+                # Nota: Usamos abs() por si el orden de los días está invertido
+                resta = abs(dias_int[1] - dias_int[0])
+
+                nights= resta - 1
+                
+                # 3. Crear el array final
+                resultados.append([nights])
+            
+        return resultados
     
     def extraer_todas_las_tablas(self, ruta_pdf):
         alias_columnas = {
@@ -96,6 +119,14 @@ class GUI(ctk.CTk):
         array_plano = [m.group(0) for m in reservas_encontradas]
         print (array_plano)
 
+        # 1. Convertir las fechas dentro del paréntesis en dos elementos de una lista. Ej: '(23/07/2026 - 27/072026)'
+        #   1.1 Expresión regular que filtre los guiones, los meses y los años. Ej: '23', '27'
+        #   1.2 Convertirlos en una lista : un array de dos numeros dentro de una lista Ej: [['23', '27'], ...]
+        #   1.3 Convertirlos en int. [[23, 27]...]
+        # 2. Restarlos [[23-27]...]
+        # 3. Crear un array de numeros  [[5]...]  
+        nights = self.calcular_diferencia_fechas(array_plano)
+        print (nights)
         # Pre-calcular precios de limpieza en el orden de todas_las_filas
         precios_limpieza = []
         for fila in todas_las_filas:
