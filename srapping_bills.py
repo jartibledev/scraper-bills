@@ -80,47 +80,59 @@ class GUI(ctk.CTk):
                         if fila_dict:
                             todas_las_filas.append(fila_dict)
 
-        # 2. Pre-calcular las reservas globales (para no buscarlas en cada fila)
-        texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
-        texto_limpio = " ".join(texto_total_pdf.split())
-        print (texto_limpio)
-        patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
-        reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
-        print (reservas_encontradas)
-        array_plano = [m.group(0) for m in reservas_encontradas]
-        print (array_plano)
+            # 2. Preparar los arrays (datos ya extraídos globalmente)
+            texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
+            texto_limpio = " ".join(texto_total_pdf.split())
+            
+            patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+            matches = list(re.finditer(patron, texto_limpio, re.IGNORECASE | re.DOTALL))
+            array_reservas = [m.group(0) for m in matches]
 
-        
-        
-        datos_finales = []
-        
-        # 3. Procesar cada fila individualmente
-        for fila in todas_las_filas:
-            concepto_raw = str(fila.get("Concepto", ""))
-            importe_raw = fila.get("Importe", 0)
-            texto_low = concepto_raw.lower()
+            # Pre-calcular precios de limpieza en el orden de todas_las_filas
+            precios_limpieza = []
+            for fila in todas_las_filas:
+                concepto = str(fila.get("Concepto", "")).lower()
+                if "limpieza" in concepto or "arreglo" in concepto:
+                    precios_limpieza.append(fila.get("Importe", 50))
+                else:
+                    precios_limpieza.append(0)
+
+            # 3. Procesar cada fila alineada por su índice
+            datos_finales = []
             
-            fila_procesada = {
-                "Concepto": concepto_raw,
-                "Importe": importe_raw,
-                
-            }
-            
-            # Primero intentamos identificar si es una reserva
-            es_reserva = False
+        
+            print (array_reservas)
+            # Usamos los índices de las reservas y los precios calculados
             for i, fila in enumerate(todas_las_filas):
-                # Si aún quedan reservas en el array, se asigna la siguiente
-                if i < len(array_plano):
-                    fila["Concepto"] = array_plano[i]
-                    fila["Tipo"] = "RESERVA"
-            
-            # Si no fue reserva, comprobamos si es limpieza
-            if not es_reserva:
-                if "limpieza" in texto_low or "arreglo" in texto_low:
-                    fila_procesada["Tipo"] = "LIMPIEZA"
-                    fila_procesada["Concepto"] = "LIMPIEZA FINAL"
-            
-            datos_finales.append(fila_procesada)
+                concepto_raw = str(fila.get("Concepto", ""))
+                texto_low = concepto_raw.lower()
+                
+                # --- FILTRO ESTRICTO ---
+                # Solo procesamos si es una Reserva O si es una Limpieza
+                es_reserva = any(res in concepto_raw for res in array_reservas)
+                es_limpieza = "limpieza" in texto_low
+                
+                if es_reserva or es_limpieza:
+                    fila_procesada = {
+                        "Concepto": "",
+                        "Limpieza": 0,
+                        "Importe": fila.get("Importe", 0)
+                    }
+                    
+                    # Si es reserva, asignamos el texto de la reserva
+                    if es_reserva:
+                        fila_procesada["Concepto"] = next(res for res in array_reservas if res in concepto_raw)
+                    
+                    # Si es limpieza, ponemos la etiqueta y el importe
+                    if es_limpieza:
+                        fila_procesada["Concepto"] = "Limpieza final"
+                        fila_procesada["Limpieza"] = fila.get("Importe", 50)
+                    
+                    datos_finales.append(fila_procesada)
+                    
+        
+                    
+                    
                     
         return datos_finales
         
