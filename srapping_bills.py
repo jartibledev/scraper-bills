@@ -39,20 +39,10 @@ class GUI(ctk.CTk):
         print(f"Destino: {self.ruta_destino}")
     
     def limpiar_concepto(self, text):
-        clean_data = {
-            "Concepto": text,
-            "Código": "",
-            "Fecha": ""
-        }
-        match_date = re.search(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}', text)
-        if match_date:
-            clean_data["Date"] = match_date.group()
-            clean_data["Concepto"]= text.replace(clean_data["Date"], "").strip()
-        match_code = re.search(r'\d{8,}', clean_data["Concepto"])
-        if match_code:
-            clean_data["Código"] = match_code.group()
-            clean_data["Concepto"]= clean_data["Concepto"].replace(clean_data["Código"],"").strip() 
-        return clean_data
+
+        match_date_and_code = re.search(r'Ref Reserva:\s(?P<codigo>\d{8,})\s\((?P<fecha_inicio>\d{1,2}/\d{1,2}/\d{2,4})\s-\s(?P<fecha_fin>\d{1,2}/\d{1,2}/\d{2,4})\)')
+
+
 
     def extraer_todas_las_tablas(self, ruta_pdf):
         # 1. Definimos los alias dentro o fuera de la función
@@ -77,7 +67,7 @@ class GUI(ctk.CTk):
             })
             
             datos_totales = []
-            
+            concepto_pendiente = ""
             for tabla in tablas:
                 idx_map = {}
                 fila_cabecera_idx = -1
@@ -94,11 +84,11 @@ class GUI(ctk.CTk):
                                 if any(a in celda for a in alias_list):
                                     idx_map[col_idx] = estandar
                         break
-                concepto_pendiente = ""
+                texto_acumulado = ""
                 for fila in tabla[fila_cabecera_idx + 1:]:
                     fila_dict = {idx_map[i]: fila[i] for i in idx_map.keys() if i < len(fila) and fila[i]}
                     if not fila_dict: continue
-
+                    
                     if "Importe" in fila_dict or "Cantidad" in fila_dict:
                         # Si hay concepto pendiente, intentamos unirlo a la fila anterior
                         if concepto_pendiente:
@@ -108,20 +98,30 @@ class GUI(ctk.CTk):
                         datos_totales.append(fila_dict)
                     
                     elif "Concepto" in fila_dict:
-                        texto_bruto = str(fila_dict["Concepto"]).lower()
+                        fragmento = str(fila_dict["Concepto"]).replace('\n', ' ')
+                        texto_acumulado += " " + fragmento
+                        texto_bruto = str(fila_dict["Concepto"])
+                        texto_limpio = " ".join(texto_acumulado.split())
                         etiqueta_encontrada = ""
-                        
-                        # Buscamos si alguna palabra clave está en el texto
-                        for categoria, lista_palabras in diccionario_concept.items():
-                            if any(palabra in texto_bruto for palabra in lista_palabras):
-                                etiqueta_encontrada = categoria
-                                break
-                            else:
-                                booking = self.limpiar_concepto(texto_bruto)
-                                break
-            
+                        print ( "Este es el texto acumulado: " + texto_acumulado )
+                        print(f"DEBUG - Texto analizado total: '{texto_limpio}'")
+                        booking= re.search(r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)', texto_acumulado, re.IGNORECASE) 
+                        print(f'Data booking: {booking}')
+                        resultado_booking = f"RESERVA {booking.group(1)} ({booking.group(2)} - {booking.group(3)})" if booking else ""
+                        if not booking:
+                                
+                            # Buscamos si alguna palabra clave está en el texto
+                            for categoria, lista_palabras in diccionario_concept.items():
+                                if any(palabra in texto_bruto for palabra in lista_palabras):
+                                    etiqueta_encontrada = categoria
+                                    break
+                            
+                                
+                                
+                                
+           
             # Si encontramos coincidencia, usamos la etiqueta; si no, dejamos el texto original
-            fila_dict["Concepto"] = etiqueta_encontrada if etiqueta_encontrada else booking
+            fila_dict["Concepto"] = etiqueta_encontrada or resultado_booking or texto_bruto
             
             # Ahora, en lugar de acumular, decidimos si esta fila aporta algo nuevo
             datos_totales.append(fila_dict)
