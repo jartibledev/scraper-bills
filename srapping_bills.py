@@ -58,13 +58,12 @@ class GUI(ctk.CTk):
             "Concepto": ["concepto", "concept", "descripcion", "description"]
         }
         
-        # 1. Extraer todas las filas de todas las tablas en una sola lista plana
+        # 1. Extraer todas las filas (igual que antes)
         todas_las_filas = []
         with pdfplumber.open(ruta_pdf) as pdf:
             for pagina in pdf.pages:
                 tablas = pagina.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
                 for tabla in tablas:
-                    # Identificar cabecera y extraer datos
                     idx_map = {}
                     fila_cabecera_idx = -1
                     for i, fila in enumerate(tabla):
@@ -76,46 +75,54 @@ class GUI(ctk.CTk):
                                     if any(a in celda for a in alias_list):
                                         idx_map[col_idx] = estandar
                             break
-                    
-                    # Guardar las filas con su mapa de columnas
                     for fila in tabla[fila_cabecera_idx + 1:]:
                         fila_dict = {idx_map[i]: fila[i] for i in idx_map.keys() if i < len(fila) and fila[i]}
                         if fila_dict:
                             todas_las_filas.append(fila_dict)
 
-        # 2. Ahora aplicamos tu lógica de listas paralelas (basada en el índice)
-        texto_completo = self.extraer_texto_completo(ruta_pdf)
-        patron = r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+        # 2. Pre-calcular las reservas globales (para no buscarlas en cada fila)
+        texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
+        texto_limpio = " ".join(texto_total_pdf.split())
+        print (texto_limpio)
+        patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+        reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
+        print (reservas_encontradas)
+        array_plano = [m.group(0) for m in reservas_encontradas]
+        print (array_plano)
+
         
         datos_finales = []
+        
+        # 3. Procesar cada fila individualmente
         for fila in todas_las_filas:
             concepto_raw = str(fila.get("Concepto", ""))
             importe_raw = fila.get("Importe", 0)
-            
-            # Categorización básica
             texto_low = concepto_raw.lower()
             
             fila_procesada = {
                 "Concepto": concepto_raw,
-                "Codigo_Reserva": "",
-                "Fechas": "",
                 "Importe": importe_raw,
                 "Tipo": "OTROS"
             }
             
-            if "reserva" in texto_low or "ref" in texto_low:
-                match = re.search(patron, concepto_raw, re.IGNORECASE | re.DOTALL)
-                if match:
+            # Primero intentamos identificar si es una reserva
+            es_reserva = False
+            for res in reservas_encontradas:
+                # Si el código de reserva está presente en el concepto de esta fila
+                if res.group(1) in concepto_raw:
                     fila_procesada["Tipo"] = "RESERVA"
-                    fila_procesada["Codigo_Reserva"] = match.group(1)
-                    fila_procesada["Fechas"] = f"{match.group(2)} - {match.group(3)}"
-                else:
-                    fila_procesada["Tipo"] = "RESERVA"
+                    fila_procesada["Concepto"] = f"RESERVA {res.group(1)} ({res.group(2)} - {res.group(3)})"
+                    fila_procesada["Codigo_Reserva"] = res.group(1)
+                    fila_procesada["Fechas"] = f"{res.group(2)} - {res.group(3)}"
+                    es_reserva = True
+                    break
             
-            elif "limpieza" in texto_low or "arreglo" in texto_low:
-                fila_procesada["Tipo"] = "LIMPIEZA"
-                fila_procesada["Concepto"] = "LIMPIEZA FINAL"
-                
+            # Si no fue reserva, comprobamos si es limpieza
+            if not es_reserva:
+                if "limpieza" in texto_low or "arreglo" in texto_low:
+                    fila_procesada["Tipo"] = "LIMPIEZA"
+                    fila_procesada["Concepto"] = "LIMPIEZA FINAL"
+            
             datos_finales.append(fila_procesada)
                     
         return datos_finales
