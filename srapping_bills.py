@@ -175,48 +175,44 @@ class GUI(ctk.CTk):
         if not nueva_lista_datos: return
 
         try:
-            # 1. LIMPIEZA DE LOS DATOS NUEVOS
+            # 1. LIMPIEZA DE DATOS NUEVOS
             df_nuevos = pd.DataFrame(nueva_lista_datos)
             df_nuevos.replace([0, '0', '', '0,0', '0,00', '0 €'], np.nan, inplace=True)
             df_nuevos.dropna(subset=['Importe'], inplace=True)
             
-            cabeceras_a_evitar = ['concepto', 'importe', 'cantidad', 'limpieza', 'total']
-            mask = ~df_nuevos.apply(lambda row: row.astype(str).str.lower().isin(cabeceras_a_evitar).any(), axis=1)
-            df_nuevos = df_nuevos[mask]
-
-            # 2. CARGAR DATOS EXISTENTES Y CONCATENAR
+            # 2. CARGAR Y LIMPIAR DATOS EXISTENTES
             if os.path.exists(ruta_excel):
                 df_existente = pd.read_excel(ruta_excel)
+                # IMPORTANTE: Limpiar también los datos que ya estaban en el Excel
+                df_existente.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
+                df_existente.dropna(subset=['Importe'], inplace=True)
+                
+                # Filtrar filas "TOTAL" ignorando mayúsculas y espacios
+                df_existente = df_existente[~df_existente.iloc[:, 0].astype(str).str.contains('TOTAL', case=False, na=False)]
             else:
                 df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
 
+            # 3. CONCATENAR
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
-            print(df_final['Importe'].dtype)
-            # 3. GUARDAR EL ARCHIVO FINAL CON LA FÓRMULA (Una sola vez)
+            
+            # Convertir Importe a número real y eliminar ceros sobrantes
+            df_final['Importe'] = pd.to_numeric(df_final['Importe'], errors='coerce').fillna(0)
+            df_final = df_final[df_final['Importe'] != 0]
+
+            # 4. GUARDAR
             with pd.ExcelWriter(ruta_excel, engine='xlsxwriter') as writer:
-                # 1. Aseguramos que la columna 'Importe' sea numérica
-                # Si hay errores (como texto), los convierte en NaN y luego los llenamos con 0
-                df_final['Importe'] = pd.to_numeric(df_final['Importe'], errors='coerce').fillna(0)
-                
                 df_final.to_excel(writer, index=False, sheet_name='Facturas')
                 
                 workbook = writer.book
                 worksheet = writer.sheets['Facturas']
-                
-                # 2. Formato de moneda
                 formato_euro = workbook.add_format({'num_format': '#,##0.00 €'})
-                
-                # 3. Aplicamos el formato a la columna C
                 worksheet.set_column('C:C', 15, formato_euro)
                 
-                # 4. Escribir la fórmula y forzar el resultado
-                ultima_fila = len(df_final) 
-                worksheet.write_formula(f'C{ultima_fila + 1}', f'=SUM(C2:C{ultima_fila})', formato_euro)
+                # 5. FÓRMULA SEGURA (Rango fijo para evitar referencia circular)
+                num_filas = len(df_final) + 1
+                worksheet.write(f'B{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
+                worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro)
 
-        except PermissionError:
-            messagebox.showerror("Error de Permisos", 
-                                "No puedo escribir en el archivo porque está abierto en Excel.\n"
-                                "Por favor, cierra el archivo y vuelve a intentarlo.")
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
             
