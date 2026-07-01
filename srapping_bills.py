@@ -127,6 +127,14 @@ class GUI(ctk.CTk):
         # 3. Crear un array de numeros  [[5]...]  
         nights = self.calcular_diferencia_fechas(array_plano)
         print (nights)
+
+        # 1. Filtrar las fechas eliminando todo lo que está fuera del paréntesis. Ej: Ref Reserva: 31682853 (27/04/2026 - 04/05/2026) -> '27/04/2026 - 04/05/2026'
+        # 2. Convertirlas en una lista de arrays: cada array tendría la fecha de inicio y la fecha de salida. Ej: [['27/04/2026', '04/05/2026'],...]
+        # 3. Restar las fechas dentro de cada array: Mediante un bucle for se itera los arrays mientras otro itera los elementos dentro de los arrays. En esta última iteración se hacen las operaciones DataFrame
+        #   3.1 Primera iteración sobre los arrays de la lista
+        #       3.1.1 Segunda iteración dentro del array : restar las fechas
+        #       3.1.2 Devuelve la diferencia
+        #   3.2 La diferencia se añade a un nuevo array
         # Pre-calcular precios de limpieza en el orden de todas_las_filas
         precios_limpieza = []
         for fila in todas_las_filas:
@@ -207,26 +215,32 @@ class GUI(ctk.CTk):
 
         try:
             # 1. Preparar datos nuevos
+            columnas = ['Concepto', 'Noches', 'Limpieza', 'Importe']
             df_nuevos = pd.DataFrame(nueva_lista_datos)
             df_nuevos.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
             df_nuevos.dropna(subset=['Importe'], inplace=True)
-
+            fechas_extraidas = df_nuevos['Concepto'].str.extract(r'\((.*?)\)')[0]
+            separadas = fechas_extraidas.str.split(' - ', expand=True)
+            f_inicio = pd.to_datetime(separadas[0], format='%d/%m/%Y', errors='coerce')
+            f_fin = pd.to_datetime(separadas[1], format='%d/%m/%Y', errors='coerce')
+            df_nuevos['Noches'] = (f_fin - f_inicio).dt.days - 1
+            df_nuevos['Noches'] = df_nuevos['Noches'].fillna(0).astype(int)
             # 2. Cargar datos existentes de forma segura
             if os.path.exists(ruta_excel):
                 try:
                     df_existente = pd.read_excel(ruta_excel)
                     # Forzamos las columnas si el archivo existe pero está vacío/mal formado
                     if df_existente.empty or 'Importe' not in df_existente.columns:
-                        df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
+                        df_existente = pd.DataFrame(columns= columnas)
                     else:
                         # Si tiene datos, limpiamos los "TOTAL" y ceros
                         df_existente.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
                         df_existente.dropna(subset=['Importe'], inplace=True)
                         df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('TOTAL', case=False, na=False)]
                 except:
-                    df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
+                    df_existente = pd.DataFrame(columns=columnas)
             else:
-                df_existente = pd.DataFrame(columns=["Concepto", "Limpieza", "Importe"])
+                df_existente = pd.DataFrame(columns=columnas)
 
             # 3. Concatenar y asegurar tipos numéricos
             df_final = pd.concat([df_existente, df_nuevos], ignore_index=True)
@@ -246,6 +260,7 @@ class GUI(ctk.CTk):
                 num_filas = len(df_final) + 1
                 worksheet.write(f'B{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
                 worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro)
+            
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
