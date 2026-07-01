@@ -53,92 +53,72 @@ class GUI(ctk.CTk):
         return texto_total
 
     def extraer_todas_las_tablas(self, ruta_pdf):
-        print ( self.extraer_texto_completo(ruta_pdf))
-        # 1. Definimos los alias dentro o fuera de la función
         alias_columnas = {
             "Importe": ["importe", "total", "amount", "price", "precio", "subtotal"],
-            "Cantidad": ["cantidad", "units", "uds", "qty", "cantidad total"],
             "Concepto": ["concepto", "concept", "descripcion", "description"]
         }
-        diccionario_concept = {
-            "LIMPIEZA": ["Limpieza final", "limpieza", "arreglo"],
-            "GESTIÓN": ["Gestión", "gestión"],
-        }
         
+        # 1. Extraer todas las filas de todas las tablas en una sola lista plana
+        todas_las_filas = []
         with pdfplumber.open(ruta_pdf) as pdf:
-            pagina = pdf.pages[0]
-            tablas = pagina.extract_tables(table_settings={
-                "vertical_strategy": "text", 
-                "horizontal_strategy": "text",
-                "snap_tolerance": 5,      # Permite que el texto se "pegue" a la tabla aunque esté un poco desalineado
-                "join_y_tolerance": 10,   # Une filas de texto que están cerca verticalmente
-                "explicit_vertical_lines": [], # Elimina restricciones de líneas verticales
-            })
-            
-            datos_totales = []
-            concepto_pendiente = ""
-            for tabla in tablas:
-                idx_map = {}
-                fila_cabecera_idx = -1
-                
-                # Buscamos la fila que contiene los encabezados
-                for i, fila in enumerate(tabla):
-                    fila_texto = [str(c).lower() if c else "" for c in fila]
-                    # Si al menos una celda contiene alguno de nuestros alias
-                    if any(any(a in celda for lista in alias_columnas.values() for a in lista) for celda in fila_texto):
-                        fila_cabecera_idx = i
-                        # Mapeamos qué índice corresponde a qué estándar
-                        for col_idx, celda in enumerate(fila_texto):
-                            for estandar, alias_list in alias_columnas.items():
-                                if any(a in celda for a in alias_list):
-                                    idx_map[col_idx] = estandar
-                        break
-                texto_acumulado = ""
-                for fila in tabla[fila_cabecera_idx + 1:]:
-                    fila_dict = {idx_map[i]: fila[i] for i in idx_map.keys() if i < len(fila) and fila[i]}
-                    if not fila_dict: continue
+            for pagina in pdf.pages:
+                tablas = pagina.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
+                for tabla in tablas:
+                    # Identificar cabecera y extraer datos
+                    idx_map = {}
+                    fila_cabecera_idx = -1
+                    for i, fila in enumerate(tabla):
+                        fila_texto = [str(c).lower() if c else "" for c in fila]
+                        if any(any(a in celda for lista in alias_columnas.values() for a in lista) for celda in fila_texto):
+                            fila_cabecera_idx = i
+                            for col_idx, celda in enumerate(fila_texto):
+                                for estandar, alias_list in alias_columnas.items():
+                                    if any(a in celda for a in alias_list):
+                                        idx_map[col_idx] = estandar
+                            break
                     
-                    if "Importe" in fila_dict or "Cantidad" in fila_dict:
-                        # Si hay concepto pendiente, intentamos unirlo a la fila anterior
-                        if concepto_pendiente:
-                            if datos_totales:
-                                datos_totales[-1]["Concepto"] = (datos_totales[-1].get("Concepto", "") + " " + concepto_pendiente).strip()
-                            concepto_pendiente = ""
-                        datos_totales.append(fila_dict)
-                    
-                    elif "Concepto" in fila_dict:
-                        texto_bruto = str(fila_dict["Concepto"])
-                        etiqueta_encontrada = ""
-                        texto_completo = self.extraer_texto_completo(ruta_pdf)
-                        patron = r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
-                        booking = re.search(patron, texto_completo, re.IGNORECASE | re.DOTALL)
-                       
-                        if booking:
-                            print(f"¡Encontrado!: {booking.group(0)}")
-                        else:
-                            print("Sigue sin aparecer. El PDF podría ser una imagen escaneada.")
-                        
-                        resultado_booking = f"RESERVA {booking.group(1)} ({booking.group(2)} - {booking.group(3)})" if booking else ""
-                        if not booking:
-                                
-                            # Buscamos si alguna palabra clave está en el texto
-                            for categoria, lista_palabras in diccionario_concept.items():
-                                if any(palabra in texto_bruto for palabra in lista_palabras):
-                                    etiqueta_encontrada = categoria
-                                    break
-                            
-                                
-                                
-                                
-           
-            # Si encontramos coincidencia, usamos la etiqueta; si no, dejamos el texto original
-            fila_dict["Concepto"] = etiqueta_encontrada or resultado_booking
+                    # Guardar las filas con su mapa de columnas
+                    for fila in tabla[fila_cabecera_idx + 1:]:
+                        fila_dict = {idx_map[i]: fila[i] for i in idx_map.keys() if i < len(fila) and fila[i]}
+                        if fila_dict:
+                            todas_las_filas.append(fila_dict)
+
+        # 2. Ahora aplicamos tu lógica de listas paralelas (basada en el índice)
+        texto_completo = self.extraer_texto_completo(ruta_pdf)
+        patron = r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+        
+        datos_finales = []
+        for fila in todas_las_filas:
+            concepto_raw = str(fila.get("Concepto", ""))
+            importe_raw = fila.get("Importe", 0)
             
-            # Ahora, en lugar de acumular, decidimos si esta fila aporta algo nuevo
-            datos_totales.append(fila_dict)
+            # Categorización básica
+            texto_low = concepto_raw.lower()
+            
+            fila_procesada = {
+                "Concepto": concepto_raw,
+                "Codigo_Reserva": "",
+                "Fechas": "",
+                "Importe": importe_raw,
+                "Tipo": "OTROS"
+            }
+            
+            if "reserva" in texto_low or "ref" in texto_low:
+                match = re.search(patron, concepto_raw, re.IGNORECASE | re.DOTALL)
+                if match:
+                    fila_procesada["Tipo"] = "RESERVA"
+                    fila_procesada["Codigo_Reserva"] = match.group(1)
+                    fila_procesada["Fechas"] = f"{match.group(2)} - {match.group(3)}"
+                else:
+                    fila_procesada["Tipo"] = "RESERVA"
+            
+            elif "limpieza" in texto_low or "arreglo" in texto_low:
+                fila_procesada["Tipo"] = "LIMPIEZA"
+                fila_procesada["Concepto"] = "LIMPIEZA FINAL"
                 
-                            
-            return datos_totales
+            datos_finales.append(fila_procesada)
+                    
+        return datos_finales
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         if not nueva_lista_datos: return
