@@ -237,6 +237,10 @@ class GUI(ctk.CTk):
                         df_existente.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
                         df_existente.dropna(subset=['Importe'], inplace=True)
                         df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('TOTAL', case=False, na=False)]
+                        df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('IVA', case=False, na=False)]
+                        df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('SUBTOTAL DEL IVA', case=False, na=False)]
+                        df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('TOTAL SIN IMPUESTOS', case=False, na=False)]
+                        df_existente = df_existente[~df_existente['Concepto'].astype(str).str.contains('TOTAL CON IMPUESTOS', case=False, na=False)]
                 except:
                     df_existente = pd.DataFrame(columns=columnas)
             else:
