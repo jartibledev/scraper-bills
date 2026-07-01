@@ -115,15 +115,33 @@ class GUI(ctk.CTk):
         array_plano = [m.group(0) for m in reservas_encontradas]
         print (array_plano)
 
+        # Pre-calcular precios de limpieza en el orden de todas_las_filas
+        precios_limpieza = []
+        for fila in todas_las_filas:
+            concepto = str(fila.get("Concepto", "")).lower()
+            if "limpieza" in concepto or "arreglo" in concepto:
+                precios_limpieza.append(fila.get("Importe", 50))
+            else:
+                precios_limpieza.append(0)
         
+        print(precios_limpieza)
         
+
+        # Mantenemos solo los elementos que NO son cero
+        precios = [x for x in precios_limpieza if x != 0]
+        print (precios)
+
+        # Resultado: [50, 100, 75]
         datos_finales = []
         
         # 3. Procesar cada fila individualmente
         for fila in todas_las_filas:
             concepto_raw = str(fila.get("Concepto", ""))
-            importe_raw = fila.get("Importe", 0)
+            importe_raw = fila.get("Importe") or None
             texto_low = concepto_raw.lower()
+            if precios[0] == importe_raw :
+                importe_raw = None
+            print (importe_raw)
             
             fila_procesada = {
                 "Concepto": "",
