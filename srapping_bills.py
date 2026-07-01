@@ -53,76 +53,92 @@ class GUI(ctk.CTk):
         return texto_total
 
     def extraer_todas_las_tablas(self, ruta_pdf):
+        print ( self.extraer_texto_completo(ruta_pdf))
+        # 1. Definimos los alias dentro o fuera de la función
         alias_columnas = {
             "Importe": ["importe", "total", "amount", "price", "precio", "subtotal"],
             "Cantidad": ["cantidad", "units", "uds", "qty", "cantidad total"],
             "Concepto": ["concepto", "concept", "descripcion", "description"]
         }
         diccionario_concept = {
-            "LIMPIEZA": ["limpieza final", "limpieza", "arreglo"],
-            "GESTIÓN": ["gestión"],
+            "LIMPIEZA": ["Limpieza final", "limpieza", "arreglo"],
+            "GESTIÓN": ["Gestión", "gestión"],
         }
-        
-        # 1. Extraemos TODO el texto una sola vez antes de procesar tablas
-        texto_completo = self.extraer_texto_completo(ruta_pdf)
-        patron = r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
-        
-        # Buscamos todas las reservas existentes en el documento de una vez
-        reservas_encontradas = list(re.finditer(patron, texto_completo, re.IGNORECASE | re.DOTALL))
-        
-        datos_totales = []
         
         with pdfplumber.open(ruta_pdf) as pdf:
             pagina = pdf.pages[0]
-            tablas = pagina.extract_tables(table_settings={"vertical_strategy": "text", "horizontal_strategy": "text"})
+            tablas = pagina.extract_tables(table_settings={
+                "vertical_strategy": "text", 
+                "horizontal_strategy": "text",
+                "snap_tolerance": 5,      # Permite que el texto se "pegue" a la tabla aunque esté un poco desalineado
+                "join_y_tolerance": 10,   # Une filas de texto que están cerca verticalmente
+                "explicit_vertical_lines": [], # Elimina restricciones de líneas verticales
+            })
             
+            datos_totales = []
+            concepto_pendiente = ""
             for tabla in tablas:
                 idx_map = {}
                 fila_cabecera_idx = -1
                 
-                # Mapeo de cabeceras
+                # Buscamos la fila que contiene los encabezados
                 for i, fila in enumerate(tabla):
                     fila_texto = [str(c).lower() if c else "" for c in fila]
+                    # Si al menos una celda contiene alguno de nuestros alias
                     if any(any(a in celda for lista in alias_columnas.values() for a in lista) for celda in fila_texto):
                         fila_cabecera_idx = i
+                        # Mapeamos qué índice corresponde a qué estándar
                         for col_idx, celda in enumerate(fila_texto):
                             for estandar, alias_list in alias_columnas.items():
                                 if any(a in celda for a in alias_list):
                                     idx_map[col_idx] = estandar
                         break
-                
-                # Procesar filas
+                texto_acumulado = ""
                 for fila in tabla[fila_cabecera_idx + 1:]:
                     fila_dict = {idx_map[i]: fila[i] for i in idx_map.keys() if i < len(fila) and fila[i]}
                     if not fila_dict: continue
                     
-                    # Procesamiento del concepto
-                    if "Concepto" in fila_dict:
-                        texto_bruto = str(fila_dict["Concepto"]).lower()
-                        
-                        # ¿Coincide con alguna reserva encontrada?
-                        # Buscamos si el texto de la fila aparece dentro de alguna reserva extraída
-                        resultado_booking = ""
-                        for res in reservas_encontradas:
-                            if texto_bruto in res.group(0).lower():
-                                resultado_booking = f"RESERVA {res.group(1)} ({res.group(2)} - {res.group(3)})"
-                                break
-                        
-                        if resultado_booking:
-                            fila_dict["Concepto"] = resultado_booking
+                    if "Importe" in fila_dict or "Cantidad" in fila_dict:
+                        # Si hay concepto pendiente, intentamos unirlo a la fila anterior
+                        if concepto_pendiente:
+                            if datos_totales:
+                                datos_totales[-1]["Concepto"] = (datos_totales[-1].get("Concepto", "") + " " + concepto_pendiente).strip()
+                            concepto_pendiente = ""
+                        datos_totales.append(fila_dict)
+                    
+                    elif "Concepto" in fila_dict:
+                        texto_bruto = str(fila_dict["Concepto"])
+                        etiqueta_encontrada = ""
+                        texto_completo = self.extraer_texto_completo(ruta_pdf)
+                        patron = r'Ref\s*Reser.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+                        booking = re.search(patron, texto_completo, re.IGNORECASE | re.DOTALL)
+                       
+                        if booking:
+                            print(f"¡Encontrado!: {booking.group(0)}")
                         else:
-                            # Si no es reserva, buscamos etiquetas
-                            etiqueta_encontrada = None
-                            for cat, palabras in diccionario_concept.items():
-                                if any(p in texto_bruto for p in palabras):
-                                    etiqueta_encontrada = cat
+                            print("Sigue sin aparecer. El PDF podría ser una imagen escaneada.")
+                        
+                        resultado_booking = f"RESERVA {booking.group(1)} ({booking.group(2)} - {booking.group(3)})" if booking else ""
+                        if not booking:
+                                
+                            # Buscamos si alguna palabra clave está en el texto
+                            for categoria, lista_palabras in diccionario_concept.items():
+                                if any(palabra in texto_bruto for palabra in lista_palabras):
+                                    etiqueta_encontrada = categoria
                                     break
-                            if etiqueta_encontrada:
-                                fila_dict["Concepto"] = etiqueta_encontrada
-                    
-                    datos_totales.append(fila_dict)
-                    
-        return datos_totales
+                            
+                                
+                                
+                                
+           
+            # Si encontramos coincidencia, usamos la etiqueta; si no, dejamos el texto original
+            fila_dict["Concepto"] = etiqueta_encontrada or resultado_booking
+            
+            # Ahora, en lugar de acumular, decidimos si esta fila aporta algo nuevo
+            datos_totales.append(fila_dict)
+                
+                            
+            return datos_totales
         
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         if not nueva_lista_datos: return
