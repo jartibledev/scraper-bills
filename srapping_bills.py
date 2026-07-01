@@ -144,8 +144,8 @@ class GUI(ctk.CTk):
             print (importe_raw)
             
             fila_procesada = {
-                "Concepto": "",
-                "Limpieza": concepto_raw,
+                "Concepto": concepto_raw,
+                "Limpieza": "",
                 "Importe": importe_raw,
                 
             }
@@ -156,14 +156,16 @@ class GUI(ctk.CTk):
                 # Si aún quedan reservas en el array, se asigna la siguiente
                 if i < len(array_plano):
                     fila["Concepto"] = array_plano[i]
+                    fila_procesada["Limpieza"] = precios[i]
+                    
                 else:
                     fila["Concepto"] = ""
+                if i < len(precios):
+                    fila_procesada["Limpieza"] = precios[i]
+                    
             
             # Si no fue reserva, comprobamos si es limpieza
-            if not es_reserva:
-                if "limpieza" in texto_low or "arreglo" in texto_low:
-                    fila_procesada["Limpieza"] = "LIMPIEZA FINAL"
-            
+        if importe_raw != 0 and importe_raw != "":
             datos_finales.append(fila_procesada)
                     
         
