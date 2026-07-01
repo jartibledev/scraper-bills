@@ -153,7 +153,7 @@ class GUI(ctk.CTk):
             fila_procesada = {
                 "Concepto": array_plano[i] if i < len(array_plano) else None,
                 "Limpieza": lista_precios_limpieza[i] if i < len(lista_precios_limpieza) else None,
-                "Importe": lista_precios_reserva[i] if i < len(lista_precios_reserva) else None,    
+                "Importe": lista_precios_reserva[i] if i < len(lista_precios_reserva)-1 else None,    
             }
             print(fila_procesada["Concepto"])
             print(fila_procesada["Limpieza"])
@@ -184,7 +184,13 @@ class GUI(ctk.CTk):
             
             # Eliminamos filas donde el Importe esté vacío (esto quita la basura)
             df_nuevos.dropna(subset=['Importe'], inplace=True)
-            
+            cabeceras_a_evitar = ['concepto', 'importe', 'cantidad', 'limpieza', 'total']
+            mask = ~df_nuevos.apply(lambda row: row.astype(str).str.lower().isin(cabeceras_a_evitar).any(), axis=1)
+            df_nuevos = df_nuevos[mask]
+
+            total_calculado = df_nuevos['Importe'].sum()
+            fila_total = {"Concepto": "TOTAL GENERAL", "Importe": total_calculado}
+            df_final = pd.concat([df_nuevos, pd.DataFrame([fila_total])], ignore_index=True)
             # 2. LÓGICA DE ACTUALIZACIÓN
             if os.path.exists(ruta_excel):
                 df_existente = pd.read_excel(ruta_excel)
