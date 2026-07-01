@@ -91,6 +91,7 @@ class GUI(ctk.CTk):
         print (array_plano)
 
         
+        
         datos_finales = []
         
         # 3. Procesar cada fila individualmente
@@ -102,20 +103,16 @@ class GUI(ctk.CTk):
             fila_procesada = {
                 "Concepto": concepto_raw,
                 "Importe": importe_raw,
-                "Tipo": "OTROS"
+                
             }
             
             # Primero intentamos identificar si es una reserva
             es_reserva = False
-            for res in reservas_encontradas:
-                # Si el código de reserva está presente en el concepto de esta fila
-                if res.group(1) in concepto_raw:
-                    fila_procesada["Tipo"] = "RESERVA"
-                    fila_procesada["Concepto"] = f"RESERVA {res.group(1)} ({res.group(2)} - {res.group(3)})"
-                    fila_procesada["Codigo_Reserva"] = res.group(1)
-                    fila_procesada["Fechas"] = f"{res.group(2)} - {res.group(3)}"
-                    es_reserva = True
-                    break
+            for i, fila in enumerate(todas_las_filas):
+                # Si aún quedan reservas en el array, se asigna la siguiente
+                if i < len(array_plano):
+                    fila["Concepto"] = array_plano[i]
+                    fila["Tipo"] = "RESERVA"
             
             # Si no fue reserva, comprobamos si es limpieza
             if not es_reserva:
