@@ -152,8 +152,8 @@ class GUI(ctk.CTk):
             
             fila_procesada = {
                 "Concepto": array_plano[i] if i < len(array_plano) else None,
-                "Limpieza": precios[i] if i < len(precios) else None,
-                "Importe": importe_raw,    
+                "Limpieza": lista_precios_limpieza[i] if i < len(lista_precios_limpieza) else None,
+                "Importe": lista_precios_reserva[i] if i < len(lista_precios_reserva) else None,    
             }
             print(fila_procesada["Concepto"])
             print(fila_procesada["Limpieza"])
