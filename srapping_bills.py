@@ -15,7 +15,8 @@ class GUI(ft.Column):
         
         self.ruta_origen = ""
         self.ruta_destino = ""
-        self.tasks = ft.Column()
+        
+        self.contenedor_lista=ft.Column()
         self.width = 600
         self.controls = [
             ft.Column(
@@ -43,10 +44,33 @@ class GUI(ft.Column):
                 ],
                     alignment=ft.MainAxisAlignment.CENTER, 
                     spacing= 15
-            )]) 
+            ),
+            ft.Column(
+                
+                controls=[
+                    ft.Text("Facturas seleccionadas:", weight="bold"),
+                    ft.Container(
+                    content=self.contenedor_lista,
+                    bgcolor=ft.Colors.BLUE_GREY_600,
+                    padding=20,
+                    border_radius=10,
+                    width=600,
+                    height=300
+            ),
+                    
+
+                ],
+            )
+            ]) 
             
         ]
 
+    def actualizar_lista_visual(self, archive):
+        # Limpiamos y recreamos la lista de textos
+        self.contenedor_lista.controls = [
+            ft.Text(f"• {archive}", size=12, color=ft.Colors.WHITE) 
+        ]
+        self.update()
     def seleccionar_archivo(self):
         
         # 1. Creamos una ventana raíz oculta de Tkinter
@@ -68,6 +92,7 @@ class GUI(ft.Column):
         
         if archivo_pdf:
             self.ruta_origen = archivo_pdf
+            self.actualizar_lista_visual(archivo_pdf)
             print(f"PDF seleccionado: {self.ruta_origen}")
             # Si necesitas actualizar la UI de Flet inmediatamente:
             # self.update()
