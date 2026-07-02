@@ -48,7 +48,7 @@ class GUI(ft.Column):
             ft.Column(
                 
                 controls=[
-                    ft.Text("Facturas seleccionadas:", weight="bold"),
+                    ft.Text("Facturas seleccionadas"),
                     ft.Container(
                     content=self.contenedor_lista,
                     bgcolor=ft.Colors.BLUE_GREY_600,
@@ -92,7 +92,8 @@ class GUI(ft.Column):
         
         if archivo_pdf:
             self.ruta_origen = archivo_pdf
-            self.actualizar_lista_visual(archivo_pdf)
+            name_archive = os.path.basename(archivo_pdf)
+            self.actualizar_lista_visual(name_archive)
             print(f"PDF seleccionado: {self.ruta_origen}")
             # Si necesitas actualizar la UI de Flet inmediatamente:
             # self.update()
