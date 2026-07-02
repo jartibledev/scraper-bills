@@ -13,7 +13,7 @@ class GUI(ft.Column):
     def __init__(self):
         super().__init__()
         
-        self.ruta_origen = ""
+        self.ruta_origen = []
         self.ruta_destino = ""
         
         self.contenedor_lista=ft.Column()
@@ -65,10 +65,15 @@ class GUI(ft.Column):
             
         ]
 
-    def actualizar_lista_visual(self, archive):
+    def actualizar_lista_visual(self):
         # Limpiamos y recreamos la lista de textos
+        list_names = []
+        for path in self.ruta_origen:
+            file_name= os.path.basename(path)
+            list_names.append(file_name)
+
         self.contenedor_lista.controls = [
-            ft.Text(f"• {archive}", size=12, color=ft.Colors.WHITE) 
+            ft.Text(f"• {names}", size=12, color=ft.Colors.WHITE ) for names in list_names 
         ]
         self.update()
     def seleccionar_archivo(self):
@@ -81,7 +86,7 @@ class GUI(ft.Column):
         root.attributes("-topmost", True)
         
         # 3. Abrimos el diálogo
-        archivo_pdf = filedialog.askopenfilename(
+        archivo_pdf = filedialog.askopenfilenames(
             parent=root, # Le decimos explícitamente que el padre es esta ventana
             title="Selecciona un archivo PDF",
             filetypes=[("Archivos PDF", "*.pdf")]
@@ -89,14 +94,16 @@ class GUI(ft.Column):
         
         # 4. Destruimos la ventana raíz para limpiar memoria
         root.destroy()
-        
+        print (archivo_pdf)
         if archivo_pdf:
-            self.ruta_origen = archivo_pdf
-            name_archive = os.path.basename(archivo_pdf)
-            self.actualizar_lista_visual(name_archive)
-            print(f"PDF seleccionado: {self.ruta_origen}")
-            # Si necesitas actualizar la UI de Flet inmediatamente:
-            # self.update()
+            for path in archivo_pdf:
+                if path not in self.ruta_origen :
+                    self.ruta_origen.append(path)
+        self.actualizar_lista_visual()
+                    
+                    
+                    # Si necesitas actualizar la UI de Flet inmediatamente:
+                    # self.update()
 
     def seleccionar_destino(self):
         root = tk.Tk()
@@ -352,28 +359,31 @@ class GUI(ft.Column):
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
             
     def procesar_todo(self):
+         
         if not self.ruta_origen or not self.ruta_destino:
             messagebox.showwarning("Error", "Selecciona carpeta y destino primero")
             return
-
-        if not os.path.exists(self.ruta_origen):
-            messagebox.showerror("Error", "La ruta seleccionada no existe")
-            return
+        data_list = []
+            
         
-        if self.ruta_origen.endswith(".pdf"):
-            # Procesar solo ese archivo directamente
-            datos = self.extraer_todas_las_tablas(self.ruta_origen)
-            self.actualizar_excel(datos, self.ruta_destino)
-            messagebox.showinfo("Éxito", "Archivo procesado")
+        for path in self.ruta_origen:    
+            if os.path.exists(path):
+                try:
+                    # Procesar solo ese archivo directamente
+                    data = self.extraer_todas_las_tablas(path)
+                    if data:
+                        data_list.extend(data)
+                        
+                except Exception as ex:
+                    print(f"Error procesando {path}: {ex}")                    
+            else:
+                messagebox.showinfo("Error", f"La ruta {path} no existe")            
+            
+        if data_list:
+            self.actualizar_excel(data_list, self.ruta_destino)
+        else:
+            messagebox.showwarning("Aviso", "No se encontraron datos para procesar.")    
         
-        else : 
-            for nombre_archivo in os.listdir(self.ruta_origen):
-                if nombre_archivo.endswith(".pdf"):
-                    ruta_completa = os.path.join(self.ruta_origen, nombre_archivo)
-                    # Extraemos la lista de importes
-                    datos = self.extraer_todas_las_tablas(ruta_completa)
-                    # Actualizamos el excel inmediatamente
-                    self.actualizar_excel(datos, self.ruta_destino)
         
         messagebox.showinfo("Éxito", "Proceso terminado")
 
