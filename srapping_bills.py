@@ -156,8 +156,8 @@ class GUI(ft.Column):
     
     def extraer_todas_las_tablas(self, ruta_pdf):
         alias_columnas = {
-            "Importe": ["importe", "total", "amount", "price", "precio", "subtotal"],
-            "Concepto": ["concepto", "concept", "descripcion", "description"]
+            "Importe": ["importe", "total", "amount", "price", "precio", "subtotal", "Precio unitario"],
+            "Concepto": ["concepto", "concept", "descripcion", "description", "descripción"]
         }
         
         # 1. Extraer todas las filas (igual que antes)
@@ -290,6 +290,7 @@ class GUI(ft.Column):
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         if not nueva_lista_datos: return
 
+        
         try:
             # 1. Preparar datos nuevos
             columnas = ['Concepto', 'Noches', 'Limpieza', 'Importe']
@@ -334,9 +335,35 @@ class GUI(ft.Column):
                 # Formato y fórmula
                 workbook = writer.book
                 worksheet = writer.sheets['Facturas']
-                formato_euro = workbook.add_format({'num_format': '#,##0.00 €'})
+
+                formato_euro = workbook.add_format({
+                    'num_format': '#,##0.00 €',
+                    'align': 'center'
+                                                    })
+                formato_titulo = workbook.add_format({
+                    'bold': True,
+                    'font_size': 22,
+                    'bg_color': "#4273DF", # Azul claro
+                    'align': 'center'
+                })
+                formato_negrita = workbook.add_format({'bold': True})
+                worksheet.set_column('A:A', 25) 
                 worksheet.set_column('C:C', 15, formato_euro)
                 worksheet.set_column('D:D', 15, formato_euro)
+                worksheet.write('A1', 'Concepto', formato_titulo)
+                worksheet.write('B1', 'Noches', formato_titulo)
+                worksheet.write('C1', 'Limpieza', formato_titulo)
+                worksheet.write('D1', 'Importe', formato_titulo)
+
+                # Obtener el rango de los datos
+                num_filas = len(df_final)
+                rango = f'A1:D{num_filas + 1}'
+
+                # Añadir tabla automática
+                worksheet.add_table(rango, {
+                    'columns': [{'header': col} for col in df_final.columns],
+                    'style': 'Table Style Medium 9' # Estilo predefinido de Excel
+                })
                 
                 
                 num_filas = len(df_final) + 1
