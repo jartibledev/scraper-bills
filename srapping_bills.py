@@ -7,6 +7,9 @@ import re
 import tkinter as tk
 from tkinter  import filedialog, messagebox
 import numpy as np
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, NamedStyle
+from openpyxl.utils import get_column_letter
 
 @ft.control
 class GUI(ft.Column):
@@ -329,58 +332,64 @@ class GUI(ft.Column):
             df_final['Importe'] = pd.to_numeric(df_final['Importe'], errors='coerce').fillna(0)
             df_final = df_final[df_final['Importe'] != 0]
             
-            with pd.ExcelWriter(ruta_excel, engine='xlsxwriter') as writer:
+            with pd.ExcelWriter(ruta_excel, engine='openpyxl') as writer:
                 df_final.to_excel(writer, index=False, sheet_name='Facturas')
                 
-                # Formato y fórmula
-                workbook = writer.book
+    
+                # Accedemos al libro y a la hoja
                 worksheet = writer.sheets['Facturas']
+                workbook = writer.book # Necesitamos el workbook para registrar el estilo
+                # Estilo: Crear un objeto de fuente
+                header_font = Font(bold=True, color="FFFFFF")
+                header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+                format_euro = NamedStyle(name="format_euro", number_format='#,##0.00 "€"')
+                workbook.add_named_style(format_euro) # ¡Esto es vital!
 
-                formato_euro = workbook.add_format({
-                    'num_format': '#,##0.00 €',
-                    'align': 'center'
-                                                    })
-                formato_titulo = workbook.add_format({
-                    'bold': True,
-                    'font_size': 22,
-                    'bg_color': "#4273DF", # Azul claro
-                    'align': 'center'
-                })
-                formato_negrita = workbook.add_format({'bold': True})
-                worksheet.set_column('A:A', 25) 
-                worksheet.set_column('C:C', 15, formato_euro)
-                worksheet.set_column('D:D', 15, formato_euro)
-                worksheet.write('A1', 'Concepto', formato_titulo)
-                worksheet.write('B1', 'Noches', formato_titulo)
-                worksheet.write('C1', 'Limpieza', formato_titulo)
-                worksheet.write('D1', 'Importe', formato_titulo)
+                # Aplicar a la primera fila (encabezados)
+                for cell in worksheet[1]:
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = Alignment(horizontal="center")
 
-                # Obtener el rango de los datos
-                num_filas = len(df_final)
-                rango = f'A1:D{num_filas + 1}'
+                for col in range(3, 5): # Columnas C y D (índice 3 y 4)
+                    for cell in worksheet[get_column_letter(col)][1:]: # De la fila 2 en adelante
+                        cell.style = format_euro
+                        
 
-                # Añadir tabla automática
-                worksheet.add_table(rango, {
-                    'columns': [{'header': col} for col in df_final.columns],
-                    'style': 'Table Style Medium 9' # Estilo predefinido de Excel
-                })
-                
-                
                 num_filas = len(df_final) + 1
-                worksheet.write(f'A{num_filas + 2}', 'TOTAL', workbook.add_format({'bold': True}))
-                worksheet.write(f'A{num_filas + 3}', 'IVA', workbook.add_format({'bold': True}))
-                worksheet.write(f'A{num_filas + 4}', 'SUBTOTAL DEL IVA', workbook.add_format({'bold': True}))
-                worksheet.write(f'A{num_filas + 5}', 'TOTAL SIN IMPUESTOS', workbook.add_format({'bold': True}))
-                worksheet.write(f'A{num_filas + 6}', 'TOTAL CON IMPUESTOS', workbook.add_format({'bold': True}))
-                worksheet.write_formula(f'B{num_filas + 2}', f'=SUM(B2:B{num_filas})')
-                worksheet.write_formula(f'C{num_filas + 2}', f'=SUM(C2:C{num_filas})', formato_euro) 
-                worksheet.write_formula(f'D{num_filas + 2}', f'=SUM(D2:D{num_filas})', formato_euro)
-                worksheet.write_formula(f'C{num_filas + 3}', f'=SUM(C{num_filas + 2})*0.21', formato_euro)
-                worksheet.write_formula(f'D{num_filas + 3}', f'=SUM(D{num_filas + 2})*0.21', formato_euro)
-                worksheet.write_formula(f'D{num_filas + 4}', f'=SUM(C{num_filas + 3}, D{num_filas + 3})', formato_euro)
-                worksheet.write_formula(f'D{num_filas + 5}', f'=SUM(C{num_filas + 2},D{num_filas + 2})', formato_euro)
-                worksheet.write_formula(f'D{num_filas + 6}', f'=SUM(D{num_filas + 4}, D{num_filas + 5})', formato_euro)
-                
+                # 1. Definimos el estilo de negrita una vez
+                negrita = Font(bold=True)
+
+                # 2. Definimos las etiquetas y sus fórmulas
+                etiquetas = [
+                    (f'A{num_filas + 2}', 'TOTAL'),
+                    (f'A{num_filas + 3}', 'IVA'),
+                    (f'A{num_filas + 4}', 'SUBTOTAL DEL IVA'),
+                    (f'A{num_filas + 5}', 'TOTAL SIN IMPUESTOS'),
+                    (f'A{num_filas + 6}', 'TOTAL CON IMPUESTOS'),
+                ]
+
+                # 3. Escribimos etiquetas con negrita
+                for celda, texto in etiquetas:
+                    worksheet[celda] = texto
+                    worksheet[celda].font = negrita
+
+                # 4. Escribimos las fórmulas (Asignación directa)
+                worksheet[f'B{num_filas + 2}'] = f'=SUM(B2:B{num_filas})'
+                worksheet[f'C{num_filas + 2}'] = f'=SUM(C2:C{num_filas})'
+                worksheet[f'D{num_filas + 2}'] = f'=SUM(D2:D{num_filas})'
+                worksheet[f'C{num_filas + 3}'] = f'=C{num_filas + 2}*0.21'
+                worksheet[f'D{num_filas + 3}'] = f'=D{num_filas + 2}*0.21'
+                worksheet[f'D{num_filas + 4}'] = f'=C{num_filas + 3} + D{num_filas + 3}'
+                worksheet[f'D{num_filas + 5}'] = f'=C{num_filas + 2} + D{num_filas + 2}'
+                worksheet[f'D{num_filas + 6}'] = f'=D{num_filas + 4} + D{num_filas + 5}'
+
+                # 5. Aplicamos formato de moneda (previamente definido como NamedStyle o Font)
+                # Si quieres aplicar el formato a las celdas de fórmulas:
+                for fila in range(num_filas + 2, num_filas + 7):
+                    for col in ['C', 'D']:
+                        worksheet[f'{col}{fila}'].style = 'format_euro' # O tu formato definido
+                            
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
