@@ -4,13 +4,15 @@ import os
 import pdfplumber
 import pandas as pd
 import re
-from tkinter import filedialog, messagebox
+import tkinter as tk
+from tkinter  import filedialog, messagebox
 import numpy as np
 
 @ft.control
 class GUI(ft.Column):
     def __init__(self):
         super().__init__()
+        
         self.ruta_origen = ""
         self.ruta_destino = ""
         self.tasks = ft.Column()
@@ -41,62 +43,45 @@ class GUI(ft.Column):
                 ],
                     alignment=ft.MainAxisAlignment.CENTER, 
                     spacing= 15
-            ), 
-
-            ft.DragTarget(
-                    group="archivos",
-                    content=ft.Container(
-                        content=ft.Text("Arrastra tu archivo aquí", color=ft.Colors.WHITE),
-                        bgcolor=ft.Colors.BLUE_GREY_400,
-                        padding=20,
-                        border_radius=10,
-                        
-                        width=600,
-                        height=300
-                    )
-                    
-                    )
-                    ],
-                    )
+            )]) 
             
         ]
-    def drag_hover(self, e):
-        # Cambiamos el color cuando algo pasa por encima
-        e.control.content.bgcolor = ft.colors.BLUE_200 if e.data == "true" else ft.colors.BLUE_GREY_400
-        e.control.update()
-
-    def archivo_soltado(self, e):
-        # Esto captura la información del archivo soltado
-        # Nota: En Flet, para procesar la ruta del archivo soltado,
-        # se recomienda combinarlo con 'FilePicker' para obtener el path real.
-        self.txt_estado.value = f"Archivo detectado: {e.src_id}"
-        self.update()
-    def build(self):
-        # Aquí defines los controles que componen tu interfaz
-        self.btn_procesar = ft.Button("Elige la factura", on_click=self.seleccionar_archivo)
-        self.btn_procesar = ft.Button("Elige el archivo excel de destino", on_click=self.seleccionar_destino)
-        self.btn_procesar = ft.Button("Procesar Facturas", bgcolor=ft.Colors.GREEN_500, color =ft.Colors.WHITE, on_click=self.procesar_todo)
-        self.txt_estado = ft.Text("Esperando archivo...")
-        
-        # Retornamos un contenedor con todos los elementos
-        return ft.Column([
-            ft.Text("Gestor de Facturas Pro", size=20),
-            self.btn_procesar,
-            self.txt_estado
-        ])
 
     def seleccionar_archivo(self):
+        
+        # 1. Creamos una ventana raíz oculta de Tkinter
+        root = tk.Tk()
+        root.withdraw()
+        
+        # 2. Hacemos que esta ventana esté siempre encima (esto ayuda con el foco)
+        root.attributes("-topmost", True)
+        
+        # 3. Abrimos el diálogo
         archivo_pdf = filedialog.askopenfilename(
-        title="Selecciona un archivo PDF",
-        filetypes=[("Archivos PDF", "*.pdf")]
-    )
+            parent=root, # Le decimos explícitamente que el padre es esta ventana
+            title="Selecciona un archivo PDF",
+            filetypes=[("Archivos PDF", "*.pdf")]
+        )
+        
+        # 4. Destruimos la ventana raíz para limpiar memoria
+        root.destroy()
+        
         if archivo_pdf:
             self.ruta_origen = archivo_pdf
             print(f"PDF seleccionado: {self.ruta_origen}")
+            # Si necesitas actualizar la UI de Flet inmediatamente:
+            # self.update()
 
     def seleccionar_destino(self):
+        root = tk.Tk()
+        root.withdraw()
+        
+        # 2. Hacemos que esta ventana esté siempre encima (esto ayuda con el foco)
+        root.attributes("-topmost", True)
         self.ruta_destino = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
         print(f"Destino: {self.ruta_destino}")
+         # 4. Destruimos la ventana raíz para limpiar memoria
+        root.destroy()
     
     def limpiar_concepto(self, text):
 
@@ -368,7 +353,8 @@ class GUI(ft.Column):
 
 def main(page: ft.Page):
     # Instanciamos nuestra clase y la añadimos a la página
-    page.add(GUI())
+    app = GUI()
+    page.add(app)
     page.title = "Procesador de facturas"
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
