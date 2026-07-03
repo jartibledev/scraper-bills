@@ -23,6 +23,12 @@ class GUI(ft.Column):
         
         self.contenedor_lista=ft.Column()
         self.width = 600
+        self.visor = ft.Button(
+                    "Abrir reporte en Excel",
+                    disabled = True,
+                    icon=ft.Icons.LOUPE,
+                    on_click= self.abrir_archivo_excel
+                        )
         self.controls = [
             ft.Column(
                 controls=[
@@ -56,11 +62,7 @@ class GUI(ft.Column):
             ft.Column(
                 
                 controls=[
-                    ft.Button(
-                    "Abrir reporte en Excel",
-                    icon=ft.Icons.LOUPE,
-                    on_click= self.abrir_archivo_excel
-                        ),
+                    self.visor,
                     ft.Text("Facturas seleccionadas"),
                     ft.Container(
                     content=self.contenedor_lista,
@@ -481,7 +483,8 @@ class GUI(ft.Column):
         else:
             messagebox.showwarning("Aviso", "No se encontraron datos para procesar.")    
         
-        
+        self.visor.disabled = False
+        self.visor.update()
         messagebox.showinfo("Éxito", "Proceso terminado")
 
 def main(page: ft.Page):
