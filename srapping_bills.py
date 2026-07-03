@@ -334,31 +334,62 @@ class GUI(ft.Column):
             
             with pd.ExcelWriter(ruta_excel, engine='openpyxl') as writer:
                 df_final.to_excel(writer, index=False, sheet_name='Facturas')
-                
+                num_filas = len(df_final) + 1
     
                 # Accedemos al libro y a la hoja
                 worksheet = writer.sheets['Facturas']
                 workbook = writer.book # Necesitamos el workbook para registrar el estilo
                 # Estilo: Crear un objeto de fuente
-                header_font = Font(bold=True, color="FFFFFF")
+                
+                header_font = Font(bold=True, color="FFFFFF", name="Arial", size="15")
                 header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-                format_euro = NamedStyle(name="format_euro", number_format='#,##0.00 "€"')
+                alignment_center = Alignment(horizontal='center', vertical='center')
+                header_total = Font(bold=True, color="FFFFFF",name="Arial", size="12")
+                format_euro = NamedStyle(name="format_euro", number_format='#,##0.00 "€"', alignment= alignment_center)
                 workbook.add_named_style(format_euro) # ¡Esto es vital!
+                font_text = Font(name='Arial', size=11, bold=False, color='000000')
 
+
+                # Iterar sobre todas las columnas con datos
+                for col in range(1, 5): # De la columna 1 a la 4 (A a D)
+                    col_letter = get_column_letter(col)
+                    
+                    # Calcular el ancho necesario (el +2 es un pequeño margen de espacio)
+                    header_val = worksheet.cell(row=1, column=col).value
+                    max_length = len(str(header_val)) if header_val else 0
+                    
+                    for cell in worksheet[col_letter][1:]:
+                        try:
+                            cell_value = str(cell.value) if cell.value else ""
+                            if len(cell_value) > max_length:
+                                max_length = len(cell_value)
+                        except:
+                            pass
+                    
+                    adjusted_width = max_length + 10
+                    worksheet.column_dimensions[col_letter].width = adjusted_width
+                
+                for row in worksheet.iter_rows(min_row=2, max_row=num_filas, min_col=1, max_col=4):
+                    for cell in row:
+                        cell.font = font_text
+                        cell.alignment = alignment_center
+
+                worksheet.row_dimensions[1].height = 30   
                 # Aplicar a la primera fila (encabezados)
                 for cell in worksheet[1]:
                     cell.font = header_font
                     cell.fill = header_fill
-                    cell.alignment = Alignment(horizontal="center")
+                    cell.alignment = alignment_center
+                    
 
                 for col in range(3, 5): # Columnas C y D (índice 3 y 4)
                     for cell in worksheet[get_column_letter(col)][1:]: # De la fila 2 en adelante
                         cell.style = format_euro
                         
 
-                num_filas = len(df_final) + 1
+                
                 # 1. Definimos el estilo de negrita una vez
-                negrita = Font(bold=True)
+                
 
                 # 2. Definimos las etiquetas y sus fórmulas
                 etiquetas = [
@@ -368,14 +399,22 @@ class GUI(ft.Column):
                     (f'A{num_filas + 5}', 'TOTAL SIN IMPUESTOS'),
                     (f'A{num_filas + 6}', 'TOTAL CON IMPUESTOS'),
                 ]
-
+                # Aplicar a un rango específico de celdas (ej. de A2 a D{num_filas})
+                height_row_total = 25
+                for row in range(num_filas + 2, num_filas + 7):
+                    worksheet.row_dimensions[row].height = height_row_total
+      
                 # 3. Escribimos etiquetas con negrita
                 for celda, texto in etiquetas:
                     worksheet[celda] = texto
-                    worksheet[celda].font = negrita
+                    worksheet[celda].font = header_total
+                    worksheet[celda].fill = header_fill
+                    worksheet[celda].alignment = alignment_center
+                    
 
                 # 4. Escribimos las fórmulas (Asignación directa)
                 worksheet[f'B{num_filas + 2}'] = f'=SUM(B2:B{num_filas})'
+                worksheet[f'B{num_filas + 2}'].font = font_text 
                 worksheet[f'C{num_filas + 2}'] = f'=SUM(C2:C{num_filas})'
                 worksheet[f'D{num_filas + 2}'] = f'=SUM(D2:D{num_filas})'
                 worksheet[f'C{num_filas + 3}'] = f'=C{num_filas + 2}*0.21'
@@ -389,6 +428,7 @@ class GUI(ft.Column):
                 for fila in range(num_filas + 2, num_filas + 7):
                     for col in ['C', 'D']:
                         worksheet[f'{col}{fila}'].style = 'format_euro' # O tu formato definido
+                        worksheet[f'{col}{fila}'].font = font_text # O tu formato definido
                             
 
         except Exception as e:
