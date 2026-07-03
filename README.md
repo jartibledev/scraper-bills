@@ -1,12 +1,12 @@
 # Procesador Automático de Facturas
 
-Una herramienta *standalone* diseñada para extraer tablas de archivos PDF y consolidarlas automáticamente en un reporte de Excel con formato profesional.
+Una herramienta diseñada para automatizar flujos de trabajo extrayendo tablas de facturas en archivos PDF y consolidarlas automáticamente en un reporte de Excel con formato profesional.
 
 ## 📋 Descripción
-Esta aplicación automatiza el flujo de trabajo de facturación. Permite seleccionar una carpeta con múltiples archivos PDF, extraer las tablas contenidas en ellos y generar un archivo Excel consolidado (`.xlsx`). El reporte incluye cálculos automáticos de IVA, totales y un diseño visualmente limpio y profesional.
+Esta aplicación automatiza el flujo de trabajo de facturación. Permite seleccionar un múltiples facturas en PDF, extraer las tablas contenidas en ellos y generar un archivo Excel consolidado (`.xlsx`). El reporte incluye cálculos automáticos de IVA, las cantidade totales y un diseño visualmente limpio y profesional.
 
 ## 🚀 Características principales
-* **Procesamiento por lotes**: Selecciona una carpeta completa o archivos individuales.
+* **Procesamiento por lotes**: Selecciona un archivo pdf o varios a la vez.
 * **Consolidación inteligente**: Une todos los datos extraídos en una única hoja de cálculo.
 * **Formato profesional**:
     * Aplicación de estilos de celda (fuentes, colores, bordes).
@@ -20,3 +20,17 @@ Esta aplicación automatiza el flujo de trabajo de facturación. Permite selecci
 * Librerías necesarias:
   ```bash
   pip install pandas openpyxl
+    ```
+## ⚙️ Notas técnicas
+* **Motor de escritura**: Se utiliza openpyxl como motor principal, lo que permite la manipulación precisa de estilos XML y asegura que los formatos persistan entre distintas suites de ofimática.
+* **Lógica de ajuste**: El script calcula automáticamente el ancho de las columnas basándose en el contenido de las cabeceras y los datos, garantizando la legibilidad.
+
+## 🛠️ Tecnologías utilizadas
+* **Pandas**: Manipulación de DataFrames y consolidación de datos tabulares.
+* **OpenPyXL**: Estilizado avanzado de celdas, fórmulas y estructuración del libro de Excel.
+* **Flet/Tkinter**: (Basado en la interfaz de tu proyecto) para la gestión de ventanas y selección de rutas.
+
+## 📄 Licencia
+
+Este proyecto es de uso privado para automatización de tareas.
+Desarrollado para optimizar la gestión contable y administrativa.
