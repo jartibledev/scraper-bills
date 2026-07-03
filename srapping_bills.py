@@ -120,7 +120,7 @@ class GUI(ft.Column):
         
         # 4. Destruimos la ventana raíz para limpiar memoria
         root.destroy()
-        print (archivo_pdf)
+        
         if archivo_pdf:
             for path in archivo_pdf:
                 if path not in self.ruta_origen :
@@ -215,12 +215,12 @@ class GUI(ft.Column):
          # 2. Pre-calcular las reservas globales (para no buscarlas en cada fila)
         texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
         texto_limpio = " ".join(texto_total_pdf.split())
-        print (texto_limpio)
+       
         patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
         reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
-        print (reservas_encontradas)
+        
         array_plano = [m.group(0) for m in reservas_encontradas]
-        print (array_plano)
+        
 
         # 1. Convertir las fechas dentro del paréntesis en dos elementos de una lista. Ej: '(23/07/2026 - 27/072026)'
         #   1.1 Expresión regular que filtre los guiones, los meses y los años. Ej: '23', '27'
@@ -229,7 +229,7 @@ class GUI(ft.Column):
         # 2. Restarlos [[23-27]...]
         # 3. Crear un array de numeros  [[5]...]  
         nights = self.calcular_diferencia_fechas(array_plano)
-        print (nights)
+        
 
         # 1. Filtrar las fechas eliminando todo lo que está fuera del paréntesis. Ej: Ref Reserva: 31682853 (27/04/2026 - 04/05/2026) -> '27/04/2026 - 04/05/2026'
         # 2. Convertirlas en una lista de arrays: cada array tendría la fecha de inicio y la fecha de salida. Ej: [['27/04/2026', '04/05/2026'],...]
@@ -248,11 +248,11 @@ class GUI(ft.Column):
                 precios_limpieza.append(0)
         # Mantenemos solo los elementos que NO son cero
         precios = [x for x in precios_limpieza if x != 0]
-        print (precios)
+        
         lista_precios_limpieza = [ float (precio.replace('€', '').replace(',', '.').strip())
                                   for precio in precios
                                   ]
-        print (lista_precios_limpieza)
+        
         precios_reserva = []
         for fila in todas_las_filas:
             precio = fila.get("Importe", "")
@@ -279,7 +279,7 @@ class GUI(ft.Column):
             
 
                                   
-        print (lista_precios_reserva)            
+                  
         
         
 
@@ -287,7 +287,7 @@ class GUI(ft.Column):
         datos_finales = []
         
         
-        print(len(precios))
+        
         
         for i, fila in enumerate(todas_las_filas):
             concepto_raw = str(fila.get("Concepto", ""))
@@ -298,9 +298,7 @@ class GUI(ft.Column):
                 "Limpieza": lista_precios_limpieza[i] if i < len(lista_precios_limpieza) else None,
                 "Importe": lista_precios_reserva[i] if i < len(lista_precios_reserva)-1 else None,    
             }
-            print(fila_procesada["Concepto"])
-            print(fila_procesada["Limpieza"])
-            print(fila_procesada["Importe"])
+            
             
             
             # Si no fue reserva, comprobamos si es limpieza
