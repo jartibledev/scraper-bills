@@ -10,6 +10,8 @@ import numpy as np
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
+import platform
+import subprocess
 
 @ft.control
 class GUI(ft.Column):
@@ -33,6 +35,8 @@ class GUI(ft.Column):
                         ft.Button("Elige el archivo excel de destino",
                                 icon=ft.Icons.LIST, 
                               on_click=self.seleccionar_destino),
+                        # Suponiendo que tienes un botón
+                        
                         ft.Button("Procesar Facturas",
                                     style=ft.ButtonStyle(
                                     color=ft.Colors.WHITE,
@@ -48,9 +52,15 @@ class GUI(ft.Column):
                     alignment=ft.MainAxisAlignment.CENTER, 
                     spacing= 15
             ),
+            
             ft.Column(
                 
                 controls=[
+                    ft.Button(
+                    "Abrir reporte en Excel",
+                    icon=ft.Icons.LOUPE,
+                    on_click= self.abrir_archivo_excel
+                        ),
                     ft.Text("Facturas seleccionadas"),
                     ft.Container(
                     content=self.contenedor_lista,
@@ -67,6 +77,17 @@ class GUI(ft.Column):
             ]) 
             
         ]
+    def abrir_archivo_excel(self):
+        """Abre el archivo en el programa predeterminado del SO."""
+        try:
+            if platform.system() == 'Windows':
+                os.startfile(self.ruta_destino)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.call(['open', self.ruta_destino])
+            else:  # Linux
+                subprocess.call(['xdg-open', self.ruta_destino])
+        except Exception as e:
+            print(f"No se pudo abrir el archivo: {e}")
 
     def actualizar_lista_visual(self):
         # Limpiamos y recreamos la lista de textos
