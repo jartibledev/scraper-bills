@@ -483,7 +483,7 @@ class GUI(ft.Column):
         
         self.visor.disabled = False
         self.visor.update()
-        messagebox.showinfo("Éxito", "Proceso terminado")
+        
 
 def main(page: ft.Page):
     # Instanciamos nuestra clase y la añadimos a la página
