@@ -1,20 +1,27 @@
 {
-  "suppliers": [
-    {
-      "name": "fefeqeq",
-      "CIF": "43141344",
-      "alias": [
-        "ert"
-      ]
-    },
-    {
-      "name": "Robafone",
-      "CIF": "B343154314341",
-      "alias": [
-        "roba",
-        "ladrones",
-        "puteros"
-      ]
-    }
-  ]
+    "suppliers": [
+        {
+            "name": "Endesa",
+            "CIF": "B12345678",
+            "alias": [
+                "endesa",
+                "endesa energia"
+            ]
+        },
+        {
+            "name": "Vodafone",
+            "CIF": "A87654321",
+            "alias": [
+                "vodafone",
+                "vodafone españa"
+            ]
+        },
+        {
+            "name": "fdafdafa",
+            "CIF": "65262645264",
+            "alias": [
+                "reee"
+            ]
+        }
+    ]
 }

@@ -216,10 +216,13 @@ class GUI(ft.Column):
         
         # 2. Añadimos el nuevo
         data["suppliers"].append(new_supplier)
-        
+        print(f"Guardando en: {os.path.abspath(file_path)}")
         # 3. Guardamos todo de vuelta
         with open(file_path, 'w', encoding='utf-8') as file:
-            json.dump(data, file, indent=2, ensure_ascii=False)
+            json.dump(data, file, indent=4, ensure_ascii=False)
+            file.flush() # Fuerza el volcado al disco
+            os.fsync(file.fileno()) # Fuerza la escritura física
+        print("Guardado completado exitosamente.") # Mira si esto aparece en la consola
 
     def load_suppliers (self, file_path):
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
