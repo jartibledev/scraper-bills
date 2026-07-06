@@ -31,6 +31,12 @@ class GUI(ft.Column):
                     icon=ft.Icons.LOUPE,
                     on_click= self.abrir_archivo_excel
                         )
+        self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
+        self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
+        self.cif_number = ft.TextField(label="Escribe el CIF")
+        self.list_supplier_view = ft.ListView(expand=1, spacing=10)
+        self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_supplier)
+
         self.controls = [
             ft.Column(
                 controls=[
@@ -61,10 +67,13 @@ class GUI(ft.Column):
                     spacing= 15
             ),
             
-            ft.Column(
-                
+            ft.Column( 
                 controls=[
-                    self.visor,
+                    self.input_supplier_name,
+                    self.alias_supplier_input,
+                    self.cif_number,
+                    self.list_supplier_view,
+                    self.button_save,
                     ft.Text("Facturas seleccionadas"),
                     ft.Container(
                     content=self.contenedor_lista,
