@@ -148,13 +148,23 @@ class GUI(ft.Column):
 
     def extraer_texto_completo(self, pdf_path):
         
-        texto_total = ""
+        total_text = ""
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:
                 # Extrae el texto plano de toda la página
-                texto_total += page.extract_text() + "\n"
+                total_text += page.extract_text() + "\n"
         
-        return texto_total
+        return total_text
+    
+    def filter_text_by_words (self, total_text ):
+        clean_text = " ".joint(total_text.split())
+        pattern = {
+            "Bill" :r'Serie\s*y\s*Númmero:*?\d{4,}/\d{3,}',
+            "Date" : r'(?i)fecha(\s+operación | de emisión)?\s*[:\s]*\d{2,}/\d{2,}/\d{4,}',
+            
+
+        }
+
 
     def calcular_diferencia_fechas(self, lista_cadenas):
         resultados = []
@@ -216,7 +226,7 @@ class GUI(ft.Column):
         texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
         texto_limpio = " ".join(texto_total_pdf.split())
        
-        patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+        patron = r'Ref\s*Reserva.*?(\d{4,})\s*\((.*?)\s*-\s*(.*?)\)'
         reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
         
         array_plano = [m.group(0) for m in reservas_encontradas]
