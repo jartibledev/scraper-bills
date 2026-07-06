@@ -1,0 +1,20 @@
+{
+  "suppliers": [
+    {
+      "name": "fefeqeq",
+      "CIF": "43141344",
+      "alias": [
+        "ert"
+      ]
+    },
+    {
+      "name": "Robafone",
+      "CIF": "B343154314341",
+      "alias": [
+        "roba",
+        "ladrones",
+        "puteros"
+      ]
+    }
+  ]
+}

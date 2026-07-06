@@ -35,7 +35,7 @@ class GUI(ft.Column):
         self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
         self.cif_number = ft.TextField(label="Escribe el CIF")
         self.list_supplier_view = ft.ListView(expand=1, spacing=10)
-        self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_supplier)
+        self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
 
         self.controls = [
             ft.Column(
@@ -188,34 +188,48 @@ class GUI(ft.Column):
             "Type_IVA": r'(?i)\d{1,2}\s*%' 
         }
     def save_click(self, e):
-        if self.name_input_supplier.value:
+            name = self.input_supplier_name.value
+            cif= self.cif_number.value
+            alias = self.alias_supplier_input.value
+
             new_supplier = {
-                "name": self.name_input_supplier,
-                "CIF": self.cif_number.value,
-                "alias": [a.strip() for a in self.alias_supplier_input.split(".")]
+                "name": name,
+                "CIF": cif,
+                "alias": [a.strip() for a in alias.split(".")]
             }
-            self.save_supplier(new_supplier, file_path='suppliers.json')
+        
+            self.save_supplier( name_value=name, alias_value= alias, cif_value=cif, file_path='suppliers.json')
             self.list_supplier_view.controls.append(ft.Text(f"🏢 {new_supplier['name']}"))
+            self.input_supplier_name.value = ""
+            self.alias_supplier_input.value = ""
+            self.cif_number.value = ""
             self.page.update()
-    def save_supplier (self, new_supplier, file_path='suppliers.json'):
+
+    def save_supplier (self, name_value, alias_value, cif_value, file_path='suppliers.json'):
+        new_supplier = {
+                "name": name_value,
+                "CIF": cif_value,
+                "alias": [a.strip() for a in alias_value.split(",")]
+            }
         # 1. Cargamos lo que ya existe
         data = self.load_suppliers(file_path)
         
         # 2. Añadimos el nuevo
-        data.append(new_supplier)
+        data["suppliers"].append(new_supplier)
         
         # 3. Guardamos todo de vuelta
         with open(file_path, 'w', encoding='utf-8') as file:
-            json.dump({"suppliers": data}, file, indent=4, ensure_ascii=False)
+            json.dump(data, file, indent=2, ensure_ascii=False)
 
-    def load_suppliers (self, path_file):
+    def load_suppliers (self, file_path):
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            return{"suppliers": []}
+         
         try:
-            with open(path_file, 'r', encoding='utf-8') as archivo:
-                datos = json.load(archivo)
-                return datos['proveedores']
-        except FileNotFoundError:
-            print("Error: El archivo no existe.")
-            return []
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            return{"suppliers": []}
 
     def find_name_corporation (self, text):
         head = text[:800]
