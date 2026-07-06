@@ -187,6 +187,16 @@ class GUI(ft.Column):
             "Total": r'(?i)total\s*[,.:]\s*[\d.,]+\s*€',
             "Type_IVA": r'(?i)\d{1,2}\s*%' 
         }
+    def save_click(self, e):
+        if self.name_input_supplier.value:
+            new_supplier = {
+                "name": self.name_input_supplier,
+                "CIF": self.cif_number.value,
+                "alias": [a.strip() for a in self.alias_supplier_input.split(".")]
+            }
+            self.save_supplier(new_supplier, file_path='suppliers.json')
+            self.list_supplier_view.controls.append(ft.Text(f"🏢 {new_supplier['name']}"))
+            self.page.update()
     def save_supplier (self, new_supplier, file_path='suppliers.json'):
         # 1. Cargamos lo que ya existe
         data = self.load_suppliers(file_path)
