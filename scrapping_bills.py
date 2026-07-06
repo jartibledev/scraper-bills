@@ -12,6 +12,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
 import platform
 import subprocess
+import unicodedata
+import json
 
 @ft.control
 class GUI(ft.Column):
@@ -156,14 +158,50 @@ class GUI(ft.Column):
         
         return total_text
     
-    def filter_text_by_words (self, total_text ):
-        clean_text = " ".joint(total_text.split())
-        pattern = {
-            "Bill" :r'Serie\s*y\s*Númmero:*?\d{4,}/\d{3,}',
-            "Date" : r'(?i)fecha(\s+operación | de emisión)?\s*[:\s]*\d{2,}/\d{2,}/\d{4,}',
-            
 
+    def normalizar_texto(self, total_text):
+        # 1. Quitar tildes (convierte 'ó' en 'o')
+        total_text = unicodedata.normalize('NFKD', total_text).encode('ascii', 'ignore').decode('utf-8')
+        # 2. Convertir a minúsculas
+        # 3. Sustituir signos de puntuación extraños por espacios
+        total_text = re.sub(r'[,.:;]', ' ', total_text)
+        return total_text.lower()
+    
+    
+    def filter_text_by_words (self, normalized_text ):
+        clean_text = " ".joint(normalized_text.split())
+        pattern = {
+            "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
+            "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
+            "CIF/NIF": r'[XYZ\d]\d{7}[A-Z]$|[ABCDEFGHJNPQRSUVW]\d{7}[\dA-Z]$',
+            "Subtotal": r'(?i)(subtotal|base\s*imponible)\s*[.,:]\s*[\d.,]+\s*€',
+            "Total": r'(?i)total\s*[,.:]\s*[\d.,]+\s*€',
+            "Type_IVA": r'(?i)\d{1,2}\s*%' 
         }
+    def save_supplier (self, new_supplier, file_path='suppliers.json'):
+        # 1. Cargamos lo que ya existe
+        data = self.load_suppliers(file_path)
+        
+        # 2. Añadimos el nuevo
+        data.append(new_supplier)
+        
+        # 3. Guardamos todo de vuelta
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump({"suppliers": data}, file, indent=4, ensure_ascii=False)
+
+    def load_suppliers (self, path_file):
+        try:
+            with open(path_file, 'r', encoding='utf-8') as archivo:
+                datos = json.load(archivo)
+                return datos['proveedores']
+        except FileNotFoundError:
+            print("Error: El archivo no existe.")
+            return []
+
+    def find_name_corporation (self, text):
+        head = text[:800]
+        lines = head.split('\n')
+        forbidden_words = ['factura', 'fecha', 'nif', 'cif', 'total','cliente']
 
 
     def calcular_diferencia_fechas(self, lista_cadenas):
