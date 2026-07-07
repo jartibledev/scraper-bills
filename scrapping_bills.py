@@ -80,7 +80,7 @@ class GUI:
         self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
         self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
         self.cif_number = ft.TextField(label="Escribe el CIF")
-        self.list_supplier_view = ft.ListView(expand=1, spacing=10)
+        self.list_supplier_view = ft.ListView(height=200, expand=True, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
 
         self.scrapper_bills = ft.Container(
@@ -96,10 +96,32 @@ class GUI:
             padding=20,
             border_radius=10
         ) 
+        self.button_supplier_visor_row = ft.Button(content="")
+        self.button_supplier_delete_row = ft.IconButton(icon=ft.Icons.DELETE, icon_color=ft.Colors.RED, icon_size=30, tooltip="Eliminar")
+        self.row_visor_supplier = ft.Row(
+            controls = [
+                self.button_supplier_visor_row,
+                self.button_supplier_delete_row
+            ]
+        )
+        self.container_visor_suppliers = ft.Column(
+                controls=[
+                    self.row_visor_supplier
+                ]
+                
+            )
+        
 
+        self.settings_container = ft.Container(
+
+                    content=ft.Column(
+                        controls=[
+                            ft.Text("Settings", size=20)
+                        ]
+                    )
+                )
         self.supplier_box =ft.Container(
-            content = 
-            ft.Column(
+            content=ft.Column(
                 [
                     ft.Text("Gestión de proovedores", size=20),
                     self.input_supplier_name,
@@ -108,27 +130,34 @@ class GUI:
                     self.list_supplier_view,
                     self.button_save
                 ]
+            ),bgcolor=ft.Colors.WHITE, # Fondo blanco para contrastar
+            padding=20,
+            width=350
+            )
+        
+        self.supplier_container = ft.Container(
+            content= ft.Row(
+                controls=[
+                    self.supplier_box,
+                    self.container_visor_suppliers
+                ]
             ),
             padding=20,
             border=ft.Border.all(1, ft.Colors.BLUE_GREY),
             border_radius=10,
-            expand=True              # Fuerza una altura
-           
+            expand=True   
         )
 
-        self.settings_container = ft.Container(
-
-            content=ft.Column(
-                controls=[
-                    ft.Text("Settings", size=20)
-                ]
-            )
-        )
+        
         
         self.settings_tabs = ft.Tab(label="Settings", icon=ft.Icons.SETTINGS)
         self.suppliers_tabs = ft.Tab(label="Suppliers", icon=ft.Icons.SHOP)
         self.scrapper_bills_tabs = ft.Tab(label="Pasar factura a excel", icon=ft.Icons.FILE_COPY_OUTLINED)
 
+        
+        
+
+        
         self.tabs_dic = [
             self.scrapper_bills_tabs,
             self.suppliers_tabs,
@@ -147,7 +176,7 @@ class GUI:
             expand=True,
             controls=[
                 self.scrapper_bills,
-                self.supplier_box,
+                self.supplier_container,
                 self.settings_container
             ]
         )
@@ -166,57 +195,7 @@ class GUI:
             expand=True,
             content = self.column_tabs 
         )  
-        
-        self.rail = ft.NavigationRail(
-            selected_index=0,
-            label_type=ft.NavigationRailLabelType.ALL,
-            min_width=100,
-            min_extended_width=400,
-            group_alignment=-0.9,
-            on_change=self.change_view,
-            
-                    destinations=[
-            ft.NavigationRailDestination(
-                icon=ft.Icons.FAVORITE_BORDER,
-                selected_icon=ft.Icons.SHOP,
-                label=ft.Text("Proveedores"),
-            ),
-            ft.NavigationRailDestination(
-                icon=ft.Icons.SETTINGS_OUTLINED,
-                selected_icon=ft.Icon(ft.Icons.SETTINGS),
-                label=ft.Text("Settings"),
-            ),
-                    
-                    ],
- 
-        )
-
-       
-
-
-        self.menu = ft.MenuBar(
-                controls=[
-                    ft.SubmenuButton(
-                        content=ft.Text("Configuración"),
-                        controls=[
-                            ft.SubmenuButton(
-                                content=ft.Text("Proveedores"),
-                                controls=[
-                                    ft.MenuItemButton(
-                                        content=ft.Text("Añadir/Quitar"),
-                                        leading=ft.Icon(ft.Icons.ADD),
-                                        close_on_click=False,
-                                        on_click= self.toggle_suppliers_view
-                                        
-                                    )
-                                ]
-                            ),
-            
-                        ],
-                    ),
-                ],
-            )
-        
+    
         self.layout = ft.Row( 
             controls = [
                 self.tabs,
