@@ -30,28 +30,13 @@ class GUI:
                     icon=ft.Icons.LOUPE,
                     on_click= self.abrir_archivo_excel
                         )
-        
-        self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
-        self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
-        self.cif_number = ft.TextField(label="Escribe el CIF")
-        self.list_supplier_view = ft.ListView(expand=1, spacing=10)
-        self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
-
-        self.scrapper_bills = ft.Column(
-            controls=[
-                
-           
-                ft.Row(
-                    controls=[
-                        ft.Button("Elige la factura", 
+        self.select_bills = ft.Button("Elige la factura", 
                                 icon=ft.Icons.FILE_COPY,
-                                on_click=self.seleccionar_archivo),
-                        ft.Button("Elige el archivo excel de destino",
+                                on_click=self.seleccionar_archivo)
+        self.select_excel = ft.Button("Elige el archivo excel de destino",
                                 icon=ft.Icons.LIST, 
-                              on_click=self.seleccionar_destino),
-                        # Suponiendo que tienes un botón
-                        
-                        ft.Button("Procesar Facturas",
+                              on_click=self.seleccionar_destino)
+        self.procces_bills = ft.Button("Procesar Facturas",
                                     style=ft.ButtonStyle(
                                     color=ft.Colors.WHITE,
                                     bgcolor=ft.Colors.GREEN_800,
@@ -61,14 +46,18 @@ class GUI:
                                icon_color=ft.Colors.WHITE,
                                
                                
-                               on_click=self.procesar_todo),
+                               on_click=self.procesar_todo)
+        self.row_procces_bills = ft.Row(
+                    controls=[
+                       self.select_bills,
+                       self.select_excel,
+                       self.procces_bills,
                 ],
                     alignment=ft.MainAxisAlignment.CENTER, 
                     spacing= 15,
-                    visible=False
-            ),
-            
-            ft.Column( 
+                    
+            )
+        self.column_visor_excel_and_bills = ft.Column( 
                 controls=[
                     self.visor,
                     ft.Text("Facturas seleccionadas"),
@@ -85,14 +74,23 @@ class GUI:
                 ],
                 
                 spacing= 15
-            ), 
-           
-            
-             
+            )
+         
+        
+        self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
+        self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
+        self.cif_number = ft.TextField(label="Escribe el CIF")
+        self.list_supplier_view = ft.ListView(expand=1, spacing=10)
+        self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
+
+        self.scrapper_bills = ft.Column(
+            controls=[
+                self.row_procces_bills,
+                self.column_visor_excel_and_bills
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            visible=False
+            
              
             )  
         
@@ -132,7 +130,6 @@ class GUI:
                     self.button_save
                 ]
             ),
-            visible=False,
             padding=20,
             border=ft.Border.all(1, ft.Colors.BLUE_GREY),
             border_radius=10,
