@@ -83,16 +83,89 @@ class GUI:
         self.list_supplier_view = ft.ListView(expand=1, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
 
-        self.scrapper_bills = ft.Column(
+        self.scrapper_bills = ft.Container(
+            content=ft.Column(
+                controls=[
+                    self.row_procces_bills,
+                    self.column_visor_excel_and_bills
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            # Aquí puedes añadir otras propiedades como padding, border, etc.
+            padding=20,
+            border_radius=10
+        ) 
+
+        self.supplier_box =ft.Container(
+            content = 
+            ft.Column(
+                [
+                    ft.Text("Gestión de proovedores", size=20),
+                    self.input_supplier_name,
+                    self.alias_supplier_input,
+                    self.cif_number,
+                    self.list_supplier_view,
+                    self.button_save
+                ]
+            ),
+            padding=20,
+            border=ft.Border.all(1, ft.Colors.BLUE_GREY),
+            border_radius=10,
+            expand=True              # Fuerza una altura
+           
+        )
+
+        self.settings_container = ft.Container(
+
+            content=ft.Column(
+                controls=[
+                    ft.Text("Settings", size=20)
+                ]
+            )
+        )
+        
+        self.settings_tabs = ft.Tab(label="Settings", icon=ft.Icons.SETTINGS)
+        self.suppliers_tabs = ft.Tab(label="Suppliers", icon=ft.Icons.SHOP)
+        self.scrapper_bills_tabs = ft.Tab(label="Pasar factura a excel", icon=ft.Icons.FILE_COPY_OUTLINED)
+
+        self.tabs_dic = [
+            self.scrapper_bills_tabs,
+            self.suppliers_tabs,
+            self.settings_tabs,
+        ]
+
+        self.tabBar = ft.TabBar(
+            tabs=[
+                self.scrapper_bills_tabs,
+                self.suppliers_tabs,
+                self.settings_tabs,
+            ]
+
+        )
+        self.tabBarView = ft.TabBarView(
+            expand=True,
             controls=[
-                self.row_procces_bills,
-                self.column_visor_excel_and_bills
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            
-             
-            )  
+                self.scrapper_bills,
+                self.supplier_box,
+                self.settings_container
+            ]
+        )
+        self.column_tabs = ft.Column(
+            expand=True,
+            controls = [
+                self.tabBar,
+                self.tabBarView
+            ]
+        )
+
+        
+        self.tabs = ft.Tabs(
+            selected_index=1,
+            length=len(self.tabs_dic),
+            expand=True,
+            content = self.column_tabs 
+        )  
         
         self.rail = ft.NavigationRail(
             selected_index=0,
@@ -118,24 +191,7 @@ class GUI:
  
         )
 
-        self.supplier_box =ft.Container(
-            content = 
-            ft.Column(
-                [
-                    ft.Text("Gestión de proovedores", size=20),
-                    self.input_supplier_name,
-                    self.alias_supplier_input,
-                    self.cif_number,
-                    self.list_supplier_view,
-                    self.button_save
-                ]
-            ),
-            padding=20,
-            border=ft.Border.all(1, ft.Colors.BLUE_GREY),
-            border_radius=10,
-            expand=True              # Fuerza una altura
-           
-        )
+       
 
 
         self.menu = ft.MenuBar(
@@ -163,12 +219,7 @@ class GUI:
         
         self.layout = ft.Row( 
             controls = [
-                self.rail,
-                self.scrapper_bills,
-
-
-
-        
+                self.tabs,
             ],expand =True
             )
         
