@@ -37,8 +37,37 @@ class GUI:
         self.list_supplier_view = ft.ListView(expand=1, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
         
+        self.rail = ft.NavigationRail(
+            selected_index=0,
+            label_type=ft.NavigationRailLabelType.ALL,
+            min_width=100,
+            min_extended_width=400,
+            group_alignment=-0.9,
+            on_change=lambda e: print("Selected destination:", e.control.selected_index),
+                    leading=ft.FloatingActionButton(
+            icon=ft.Icons.CREATE,
+            content="Add",
+            on_click=lambda e: print("FAB clicked!"),
+        ),
+                    destinations=[
+            ft.NavigationRailDestination(
+                icon=ft.Icons.FAVORITE_BORDER,
+                selected_icon=ft.Icons.SHOP,
+                label=ft.Text("Settings"),
+            ),
+            ft.NavigationRailDestination(
+                icon=ft.Icons.SETTINGS_OUTLINED,
+                selected_icon=ft.Icon(ft.Icons.SETTINGS),
+                label=ft.Text("Settings"),
+            ),
+                    
+                    ],
+ 
+        )
+
         self.supplier_box =ft.Container(
-            content = ft.Column(
+            content = 
+            ft.Column(
                 [
                     ft.Text("Gestión de proovedores", size=20),
                     self.input_supplier_name,
@@ -80,15 +109,12 @@ class GUI:
                 ],
             )
         
-        self.layout = ft.Column(
+        self.layout = ft.Row( 
+            controls = [
+                self.rail,
+        ft.Column(
             controls=[
-                ft.Row(
-                    controls=[
-                         self.menu,
-                         self.supplier_box
-
-                    ]
-                ),
+                
            
                 ft.Row(
                     controls=[
@@ -141,6 +167,7 @@ class GUI:
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
              
+            )],expand =True
             )
         
         self.page.add(self.layout)
