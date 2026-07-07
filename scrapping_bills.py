@@ -36,6 +36,65 @@ class GUI:
         self.cif_number = ft.TextField(label="Escribe el CIF")
         self.list_supplier_view = ft.ListView(expand=1, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
+
+        self.scrapper_bills = ft.Column(
+            controls=[
+                
+           
+                ft.Row(
+                    controls=[
+                        ft.Button("Elige la factura", 
+                                icon=ft.Icons.FILE_COPY,
+                                on_click=self.seleccionar_archivo),
+                        ft.Button("Elige el archivo excel de destino",
+                                icon=ft.Icons.LIST, 
+                              on_click=self.seleccionar_destino),
+                        # Suponiendo que tienes un botón
+                        
+                        ft.Button("Procesar Facturas",
+                                    style=ft.ButtonStyle(
+                                    color=ft.Colors.WHITE,
+                                    bgcolor=ft.Colors.GREEN_800,
+                                    overlay_color=ft.Colors.GREEN_600,
+                               ),
+                               icon=ft.Icons.FILE_DOWNLOAD,
+                               icon_color=ft.Colors.WHITE,
+                               
+                               
+                               on_click=self.procesar_todo),
+                ],
+                    alignment=ft.MainAxisAlignment.CENTER, 
+                    spacing= 15,
+                    visible=False
+            ),
+            
+            ft.Column( 
+                controls=[
+                    self.visor,
+                    ft.Text("Facturas seleccionadas"),
+                    ft.Container(
+                    content=self.contenedor_lista,
+                    bgcolor=ft.Colors.BLUE_GREY_600,
+                    padding=20,
+                    border_radius=10,
+                    width=600,
+                    height=300
+            ),
+                    
+
+                ],
+                
+                spacing= 15
+            ), 
+           
+            
+             
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            visible=False
+             
+            )  
         
         self.rail = ft.NavigationRail(
             selected_index=0,
@@ -43,17 +102,13 @@ class GUI:
             min_width=100,
             min_extended_width=400,
             group_alignment=-0.9,
-            on_change=lambda e: print("Selected destination:", e.control.selected_index),
-                    leading=ft.FloatingActionButton(
-            icon=ft.Icons.CREATE,
-            content="Add",
-            on_click=lambda e: print("FAB clicked!"),
-        ),
+            on_change=self.change_view,
+            
                     destinations=[
             ft.NavigationRailDestination(
                 icon=ft.Icons.FAVORITE_BORDER,
                 selected_icon=ft.Icons.SHOP,
-                label=ft.Text("Settings"),
+                label=ft.Text("Proveedores"),
             ),
             ft.NavigationRailDestination(
                 icon=ft.Icons.SETTINGS_OUTLINED,
@@ -81,8 +136,8 @@ class GUI:
             padding=20,
             border=ft.Border.all(1, ft.Colors.BLUE_GREY),
             border_radius=10,
-            height=200,               # Fuerza una altura
-            width=400
+            expand=True              # Fuerza una altura
+           
         )
 
 
@@ -112,67 +167,26 @@ class GUI:
         self.layout = ft.Row( 
             controls = [
                 self.rail,
-        ft.Column(
-            controls=[
-                
-           
-                ft.Row(
-                    controls=[
-                        ft.Button("Elige la factura", 
-                                icon=ft.Icons.FILE_COPY,
-                                on_click=self.seleccionar_archivo),
-                        ft.Button("Elige el archivo excel de destino",
-                                icon=ft.Icons.LIST, 
-                              on_click=self.seleccionar_destino),
-                        # Suponiendo que tienes un botón
-                        
-                        ft.Button("Procesar Facturas",
-                                    style=ft.ButtonStyle(
-                                    color=ft.Colors.WHITE,
-                                    bgcolor=ft.Colors.GREEN_800,
-                                    overlay_color=ft.Colors.GREEN_600,
-                               ),
-                               icon=ft.Icons.FILE_DOWNLOAD,
-                               icon_color=ft.Colors.WHITE,
-                               
-                               
-                               on_click=self.procesar_todo),
-                ],
-                    alignment=ft.MainAxisAlignment.CENTER, 
-                    spacing= 15
-            ),
-            
-            ft.Column( 
-                controls=[
-                    self.visor,
-                    ft.Text("Facturas seleccionadas"),
-                    ft.Container(
-                    content=self.contenedor_lista,
-                    bgcolor=ft.Colors.BLUE_GREY_600,
-                    padding=20,
-                    border_radius=10,
-                    width=600,
-                    height=300
-            ),
-                    
+                self.scrapper_bills,
 
-                ],
-                
-                spacing= 15
-            ), 
-           
-            
-             
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-             
-            )],expand =True
+
+
+        
+            ],expand =True
             )
         
         self.page.add(self.layout)
         
         self.page.update()
+
+    def change_view(self, e):
+        selected = e.control.selected_index
+        if selected == 0:
+            self.scrapper_bills.visible(True)
+        elif selected == 1:
+            self.supplier_box.visible(True)
+
+
 
     def toggle_suppliers_view(self, e):
         self.supplier_box.visible = True
