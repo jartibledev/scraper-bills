@@ -16,15 +16,14 @@ import unicodedata
 import json
 
 @ft.control
-class GUI(ft.Column):
-    def __init__(self):
-        super().__init__()
-        
+class GUI:
+    def __init__(self, page: ft.Page):
+           
+        self.page = page
         self.ruta_origen = []
         self.ruta_destino = ""
-        
+        self.page.theme_mode = ft.ThemeMode.LIGHT
         self.contenedor_lista=ft.Column()
-        self.width = 600
         self.visor = ft.Button(
                     "Abrir reporte en Excel",
                     disabled = True,
@@ -50,12 +49,16 @@ class GUI(ft.Column):
                     ),
                 ],
             )
+        
+        self.layout = ft.Column(
+            controls=[
+                ft.Row(
+                    controls=[
+                         self.menu,
 
-        self.controls = [
-            self.menu,
-            ft.Column(
-                controls=[
-               
+                    ]
+                ),
+           
                 ft.Row(
                     controls=[
                         ft.Button("Elige la factura", 
@@ -84,11 +87,6 @@ class GUI(ft.Column):
             
             ft.Column( 
                 controls=[
-                    self.input_supplier_name,
-                    self.alias_supplier_input,
-                    self.cif_number,
-                    self.list_supplier_view,
-                    self.button_save,
                     self.visor,
                     ft.Text("Facturas seleccionadas"),
                     ft.Container(
@@ -102,10 +100,21 @@ class GUI(ft.Column):
                     
 
                 ],
-            )
-            ]) 
+                
+                spacing= 15
+            ), 
+           
             
-        ]
+             
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+             
+            )
+        
+        self.page.add(self.layout)
+        
+        self.page.update()
 
     def abrir_archivo_excel(self):
         """Abre el archivo en el programa predeterminado del SO."""
@@ -588,13 +597,12 @@ class GUI(ft.Column):
 
 def main(page: ft.Page):
     # Instanciamos nuestra clase y la añadimos a la página
-    app = GUI()
-    page.add(app)
-    page.title = "Procesador de facturas"
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.update()
+    page.title = "Scrapper bills"
+    page.window.width = 900
+    page.window.height = 700
+    app = GUI(page)
     
 
     
-ft.run(main)
+if __name__ == "__main__":
+    ft.run(main)
