@@ -37,14 +37,44 @@ class GUI:
         self.list_supplier_view = ft.ListView(expand=1, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
         
+        self.supplier_box =ft.Container(
+            content = ft.Column(
+                [
+                    ft.Text("Gestión de proovedores", size=20),
+                    self.input_supplier_name,
+                    self.alias_supplier_input,
+                    self.cif_number,
+                    self.list_supplier_view,
+                    self.button_save
+                ]
+            ),
+            visible=False,
+            padding=20,
+            border=ft.Border.all(1, ft.Colors.BLUE_GREY),
+            border_radius=10,
+            height=200,               # Fuerza una altura
+            width=400
+        )
+
+
         self.menu = ft.MenuBar(
                 controls=[
                     ft.SubmenuButton(
-                        content=ft.Text("Submenu"),
+                        content=ft.Text("Configuración"),
                         controls=[
-                            ft.MenuItemButton(content=ft.Text("Item 1")),
-                            ft.MenuItemButton(content=ft.Text("Item 2")),
-                            ft.MenuItemButton(content=ft.Text("Item 3")),
+                            ft.SubmenuButton(
+                                content=ft.Text("Proveedores"),
+                                controls=[
+                                    ft.MenuItemButton(
+                                        content=ft.Text("Añadir/Quitar"),
+                                        leading=ft.Icon(ft.Icons.ADD),
+                                        close_on_click=False,
+                                        on_click= self.toggle_suppliers_view
+                                        
+                                    )
+                                ]
+                            ),
+            
                         ],
                     ),
                 ],
@@ -55,6 +85,7 @@ class GUI:
                 ft.Row(
                     controls=[
                          self.menu,
+                         self.supplier_box
 
                     ]
                 ),
@@ -114,6 +145,10 @@ class GUI:
         
         self.page.add(self.layout)
         
+        self.page.update()
+
+    def toggle_suppliers_view(self, e):
+        self.supplier_box.visible = True
         self.page.update()
 
     def abrir_archivo_excel(self):
