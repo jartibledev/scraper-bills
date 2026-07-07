@@ -31,13 +31,28 @@ class GUI(ft.Column):
                     icon=ft.Icons.LOUPE,
                     on_click= self.abrir_archivo_excel
                         )
+        
         self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
         self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
         self.cif_number = ft.TextField(label="Escribe el CIF")
         self.list_supplier_view = ft.ListView(expand=1, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
+        
+        self.menu = ft.MenuBar(
+                controls=[
+                    ft.SubmenuButton(
+                        content=ft.Text("Submenu"),
+                        controls=[
+                            ft.MenuItemButton(content=ft.Text("Item 1")),
+                            ft.MenuItemButton(content=ft.Text("Item 2")),
+                            ft.MenuItemButton(content=ft.Text("Item 3")),
+                        ],
+                    ),
+                ],
+            )
 
         self.controls = [
+            self.menu,
             ft.Column(
                 controls=[
                
@@ -74,6 +89,7 @@ class GUI(ft.Column):
                     self.cif_number,
                     self.list_supplier_view,
                     self.button_save,
+                    self.visor,
                     ft.Text("Facturas seleccionadas"),
                     ft.Container(
                     content=self.contenedor_lista,
@@ -90,6 +106,7 @@ class GUI(ft.Column):
             ]) 
             
         ]
+
     def abrir_archivo_excel(self):
         """Abre el archivo en el programa predeterminado del SO."""
         try:
