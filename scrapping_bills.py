@@ -75,14 +75,45 @@ class GUI:
                 
                 spacing= 15
             )
-         
         
+         
         self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
         self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
         self.cif_number = ft.TextField(label="Escribe el CIF")
         self.list_supplier_view = ft.ListView(height=200, expand=True, spacing=10)
         self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
+        
+        self.procces_set_bills = ft.Button("Procesar lote de facturas",
+                                           style =ft.ButtonStyle(
+                                               color=ft.Colors.WHITE,
+                                               bgcolor=ft.Colors.GREEN_800,
+                                               overlay_color = ft.Colors.GREEN_600,
+                                           ),
+                                           icon= ft.Icons.FILE_DOWNLOAD,
+                                           icon_color= ft.Colors.WHITE,
+                                           on_click = self.wrapper_set_bills
+                                           )
+        self.proccess_set_bills_row = ft.Row(
+            controls=[
+                self.select_bills,
+                self.select_excel,
+                self.procces_set_bills
+            ],
+            alignment = ft.MainAxisAlignment.CENTER,
+            spacing= 15,
+        )
 
+        self.container_set_bills = ft.Container(
+            content = ft.Column(
+                controls=[
+                    self.proccess_set_bills_row,
+                    self.column_visor_excel_and_bills
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+        )  
+        
         self.scrapper_bills = ft.Container(
             content=ft.Column(
                 controls=[
@@ -153,22 +184,23 @@ class GUI:
         self.settings_tabs = ft.Tab(label="Settings", icon=ft.Icons.SETTINGS)
         self.suppliers_tabs = ft.Tab(label="Suppliers", icon=ft.Icons.SHOP)
         self.scrapper_bills_tabs = ft.Tab(label="Pasar factura a excel", icon=ft.Icons.FILE_COPY_OUTLINED)
+        self.set_bills_tabs = ft.Tab(label="Procesar lote de facturas", icon=ft.Icons.FOLDER_COPY_OUTLINED)
 
-        
-        
-
-        
         self.tabs_dic = [
             self.scrapper_bills_tabs,
+            self.set_bills_tabs,
             self.suppliers_tabs,
             self.settings_tabs,
+            
         ]
 
         self.tabBar = ft.TabBar(
             tabs=[
                 self.scrapper_bills_tabs,
+                self.set_bills_tabs,
                 self.suppliers_tabs,
                 self.settings_tabs,
+                
             ]
 
         )
@@ -176,6 +208,7 @@ class GUI:
             expand=True,
             controls=[
                 self.scrapper_bills,
+                self.container_set_bills,
                 self.supplier_container,
                 self.settings_container
             ]
@@ -342,12 +375,11 @@ class GUI:
         
         return results
     
-
-
     def wrapper_set_bills (self):
         total_text = self.extraer_texto_completo (self.ruta_origen)
         total_text_normalized = self.normalizar_texto(total_text)
         filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_data='suppliers.json')
+        print(filtered_text)
         return filtered_text 
 
     
