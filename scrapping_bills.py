@@ -362,7 +362,10 @@ class GUI:
         return dic_suppliers     
         
 
-
+    def json_to_dic (self, json_path="suppliers.json"):
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
 
     def filter_text_by_words (self, normalized_text, json_path ):
         with open(json_path, 'r', encoding='utf-8')as f:
@@ -416,35 +419,36 @@ class GUI:
         print(filtered_text)
         return filtered_text 
 
-    def show_suppliers(self, dic_suppliers):
-        list_names_suppliers= dic_suppliers["all_names"]
+    def show_suppliers(self, data):
+        data = self.json_to_dic(json_path="suppliers.json")
+        list_suppliers = data["suppliers"]
+        
         self.container_visor_suppliers.controls = [
             ft.Row(
                 controls=[
-                    ft.Button(content=f"{name}"),
+                    ft.Button(content= s["name"]),
                     ft.IconButton(
                         icon=ft.Icons.DELETE,
                         icon_color=ft.Colors.RED,
+                        on_click=lambda e, cif=s["CIF"]: self.delete_supplier_by_cif(cif)
                     )
                 ],
                 alignment= ft.MainAxisAlignment.START
             )
-            for name in list_names_suppliers
+            for s in list_suppliers
             
         ]
         self.container_visor_suppliers.update()
 
     def on_tab_change(self, e):
         selected_tab = self.tabs_dic[e.control.selected_index]
-        
-
         if selected_tab.label == "Proveedores":
-            dic_suppliers = self.get_json(json_path="suppliers.json")
-            self.show_suppliers(dic_suppliers= dic_suppliers)
+            data = self.json_to_dic
+            self.show_suppliers(data)
             self.page.update()      
 
 
-    def save_click(self, e):
+    def save_click(self):
             name = self.input_supplier_name.value
             cif= self.cif_number.value
             alias = self.alias_supplier_input.value
@@ -460,6 +464,7 @@ class GUI:
             self.input_supplier_name.value = ""
             self.alias_supplier_input.value = ""
             self.cif_number.value = ""
+            self.refresh_supplier_list()
             self.page.update()
 
     def save_supplier (self, name_value, alias_value, cif_value, file_path='suppliers.json'):
@@ -491,6 +496,24 @@ class GUI:
         except json.JSONDecodeError:
             return{"suppliers": []}
 
+    def delete_supplier_by_cif(self, cif_to_delete):
+        with open('suppliers.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Filtramos por CIF. Como el CIF es único, solo se borrará ese bloque.
+        data["suppliers"] = [s for s in data["suppliers"] if s["CIF"] != cif_to_delete]
+        
+        with open('suppliers.json', 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        
+        self.refresh_supplier_list()
+
+
+    def refresh_supplier_list(self):
+        with open("suppliers.json", 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        self.show_suppliers(data)
+        self.page.update()
 
 
     def calcular_diferencia_fechas(self, lista_cadenas):

@@ -1,36 +1,6 @@
 {
     "suppliers": [
         {
-            "name": "Endesa",
-            "CIF": "B12345678",
-            "alias": [
-                "endesa",
-                "endesa energia"
-            ]
-        },
-        {
-            "name": "Vodafone",
-            "CIF": "A87654321",
-            "alias": [
-                "vodafone",
-                "vodafone españa"
-            ]
-        },
-        {
-            "name": "fdafdafa",
-            "CIF": "65262645264",
-            "alias": [
-                "reee"
-            ]
-        },
-        {
-            "name": "Robaphone",
-            "CIF": "b2132431431",
-            "alias": [
-                "rob"
-            ]
-        },
-        {
             "name": "Easy Rent Malaga",
             "CIF": "B44665909",
             "alias": [
