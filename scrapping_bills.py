@@ -460,12 +460,28 @@ class GUI:
             match = re.search(regular_expresion, clean_text, re.IGNORECASE)
             results[key] = match.group(0) if match else None
 
+
         total_float = self.limpiar_y_convertir_total(results["Total"])
         results["Total"] = total_float
         results["Subtotal_base_imponible"] = base_imponible
         results["Subtotal_IVA"] = iva_total
 
+        
 
+        # El patrón busca "Serie y número", ignora separadores y captura solo el número
+        pattern_bill = r'(?i)serie\s*y\s*n[uú]mero\s*[:.,\s]*\s*(\d+/\d+)'
+
+        # En tu código de procesamiento:
+        match = re.search(pattern_bill, clean_text)
+
+        if match:
+            # group(1) contiene solo lo que está entre paréntesis (2026/158)
+            results["Bill"] = match.group(1)
+        else:
+            results["Bill"] = None
+
+
+        print (results)
         return results
     
     def wrapper_set_bills (self):
