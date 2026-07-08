@@ -494,6 +494,7 @@ class GUI:
             total_text_normalized = self.normalizar_texto(total_text)
             filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_path='suppliers.json')
             list_bills.append(filtered_text)
+        self.update_set_bills_excel(list_bills=list_bills, path_excel=self.ruta_destino)
             
         print(list_bills)
         return list_bills 
@@ -897,12 +898,12 @@ class GUI:
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
 
-    def update_set_bills_excel (self, final_data, path_excel):
-        if not final_data: return
+    def update_set_bills_excel (self, list_bills, path_excel, name ="facturas_prueba.xlsx"):
+        if not list_bills: return
         try:
             columns = ['Fecha', 'Nº de factura', 'Proveedor', 'CIF/NIF', 'Concepto', 'Base imponible', 'Tipo de IVA', 'Cuota IVA', 'Total Factura']
-            df_new = pd.DataFrame(final_data)
-            
+            df = pd.DataFrame(list_bills)
+            df.to_excel(path_excel, index=False, engine='openpyxl')
             
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
