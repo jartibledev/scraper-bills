@@ -137,7 +137,7 @@ class GUI:
         )
         self.container_visor_suppliers = ft.Column(
                 controls=[
-                    self.row_visor_supplier
+                    
                 ]
                 
             )
@@ -181,8 +181,8 @@ class GUI:
 
         
         
-        self.settings_tabs = ft.Tab(label="Settings", icon=ft.Icons.SETTINGS)
-        self.suppliers_tabs = ft.Tab(label="Suppliers", icon=ft.Icons.SHOP)
+        self.settings_tabs = ft.Tab(label="Configuración", icon=ft.Icons.SETTINGS)
+        self.suppliers_tabs = ft.Tab(label="Proveedores", icon=ft.Icons.SHOP)
         self.scrapper_bills_tabs = ft.Tab(label="Pasar factura a excel", icon=ft.Icons.FILE_COPY_OUTLINED)
         self.set_bills_tabs = ft.Tab(label="Procesar lote de facturas", icon=ft.Icons.FOLDER_COPY_OUTLINED)
 
@@ -226,7 +226,8 @@ class GUI:
             selected_index=1,
             length=len(self.tabs_dic),
             expand=True,
-            content = self.column_tabs 
+            content = self.column_tabs,
+            on_change= self.on_tab_change 
         )  
     
         self.layout = ft.Row( 
@@ -238,15 +239,6 @@ class GUI:
         self.page.add(self.layout)
         
         self.page.update()
-
-    def change_view(self, e):
-        selected = e.control.selected_index
-        if selected == 0:
-            self.scrapper_bills.visible(True)
-        elif selected == 1:
-            self.supplier_box.visible(True)
-
-
 
     def toggle_suppliers_view(self, e):
         self.supplier_box.visible = True
@@ -274,7 +266,8 @@ class GUI:
         self.contenedor_lista.controls = [
             ft.Text(f"• {names}", size=12, color=ft.Colors.WHITE ) for names in list_names 
         ]
-        self.update()
+        self.page.update()
+
     def seleccionar_archivo(self):
         
         # 1. Creamos una ventana raíz oculta de Tkinter
@@ -319,13 +312,14 @@ class GUI:
 
         match_date_and_code = re.search(r'Ref Reserva:\s(?P<codigo>\d{8,})\s\((?P<fecha_inicio>\d{1,2}/\d{1,2}/\d{2,4})\s-\s(?P<fecha_fin>\d{1,2}/\d{1,2}/\d{2,4})\)')
 
-    def extraer_texto_completo(self, pdf_path):
+    def extraer_texto_completo(self, set_bills):
         
         total_text = ""
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                # Extrae el texto plano de toda la página
-                total_text += page.extract_text() + "\n"
+        for bill in set_bills:
+            with pdfplumber.open(bill) as pdf:
+                for page in pdf.pages:
+                    # Extrae el texto plano de toda la página
+                    total_text += page.extract_text() + "\n"
         
         return total_text
     
@@ -337,24 +331,67 @@ class GUI:
         total_text = re.sub(r'[,.:;]', ' ', total_text)
         return total_text.lower()
     
-    
-    def filter_text_by_words (self, normalized_text, json_data ):
-        data = json.loads(json_data)
-        suppliers = data["suppliers"]
-        dic_suppliers = {list_supplier['CIF']: list_supplier['name'] for list_supplier in suppliers}
+    def get_json (self, json_path):
+        with open(json_path, 'r', encoding='utf-8')as f:
+            data = json.load(f)
+
+        
 
         all_cifs = []
         all_names = []
-        for supplier in dic_suppliers:
-            all_names.append(re.escape(supplier['name']))
-            all_cifs.append(re.escape(supplier['CIF']))
-            for alias in supplier.get('alias', []):
-                all_names.append(re.escape(alias))
+        suppliers = data["suppliers"]
+
+        for supplier in suppliers:
+            # Aquí 'supplier' es {'name': 'Endesa', 'CIF': 'B12345678', ...}
+            # Esto permite acceder por clave sin problemas
+            name = supplier.get('name', '')
+            cif = supplier.get('CIF', '')
         
+        if name:
+            all_names.append(re.escape(name))
+        if cif:
+            all_cifs.append(re.escape(cif))
+            
+        for alias in supplier.get('alias', []):
+            all_names.append(re.escape(alias))
+        
+        dic_suppliers = {
+            "all_names" : all_names,
+            "all_cifs" : all_cifs
+        }
+        return dic_suppliers     
+        
+
+
+
+    def filter_text_by_words (self, normalized_text, json_path ):
+        with open(json_path, 'r', encoding='utf-8')as f:
+            data = json.load(f)
+
+        
+
+        all_cifs = []
+        all_names = []
+        suppliers = data["suppliers"]
+
+        for supplier in suppliers:
+            # Aquí 'supplier' es {'name': 'Endesa', 'CIF': 'B12345678', ...}
+            # Esto permite acceder por clave sin problemas
+            name = supplier.get('name', '')
+            cif = supplier.get('CIF', '')
+        
+        if name:
+            all_names.append(re.escape(name))
+        if cif:
+            all_cifs.append(re.escape(cif))
+            
+        for alias in supplier.get('alias', []):
+            all_names.append(re.escape(alias)) 
+    
         regular_expresion_cif_supplier = r'\b('+'|'.join(all_cifs)+r')\b'
         regular_expresion_names_supplier = r'\b(' + '|'.join(all_names) + r')\b'
             
-        clean_text = " ".joint(normalized_text.split())
+        clean_text = " ".join(normalized_text.split())
         pattern = {
             "Supplier": regular_expresion_names_supplier,
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
@@ -368,21 +405,45 @@ class GUI:
         results = {}
         for key, regular_expresion in pattern.items():
             match = re.search(regular_expresion, clean_text, re.IGNORECASE)
-            if match:
-                results[key] = match.group(0)
-            else:
-                results[key]= None
+            results[key] = match.group(0) if match else None
         
         return results
     
     def wrapper_set_bills (self):
         total_text = self.extraer_texto_completo (self.ruta_origen)
         total_text_normalized = self.normalizar_texto(total_text)
-        filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_data='suppliers.json')
+        filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_path='suppliers.json')
         print(filtered_text)
         return filtered_text 
 
-    
+    def show_suppliers(self, dic_suppliers):
+        list_names_suppliers= dic_suppliers["all_names"]
+        self.container_visor_suppliers.controls = [
+            ft.Row(
+                controls=[
+                    ft.Button(content=f"{name}"),
+                    ft.IconButton(
+                        icon=ft.Icons.DELETE,
+                        icon_color=ft.Colors.RED,
+                    )
+                ],
+                alignment= ft.MainAxisAlignment.START
+            )
+            for name in list_names_suppliers
+            
+        ]
+        self.container_visor_suppliers.update()
+
+    def on_tab_change(self, e):
+        selected_tab = self.tabs_dic[e.control.selected_index]
+        
+
+        if selected_tab.label == "Proveedores":
+            dic_suppliers = self.get_json(json_path="suppliers.json")
+            self.show_suppliers(dic_suppliers= dic_suppliers)
+            self.page.update()      
+
+
     def save_click(self, e):
             name = self.input_supplier_name.value
             cif= self.cif_number.value
