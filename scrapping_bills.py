@@ -367,11 +367,36 @@ class GUI:
             data = json.load(f)
         return data
 
+    def limpiar_y_convertir_total(self, match_text):
+        if not match_text:
+            return None
+        
+        # 1. Eliminamos todo lo que no sea un dígito
+        # Esto elimina "total", ":", "€", espacios, etc.
+        solo_numeros = re.sub(r'\D', '', match_text)
+        
+        # 2. Si después de limpiar no queda nada (ej. el OCR leyó solo letras), devolvemos None
+        if not solo_numeros:
+            return None
+        
+        # 3. Aplicamos la lógica de decimales (asumiendo que los últimos 2 son centavos)
+        if len(solo_numeros) > 2:
+            entero = solo_numeros[:-2]
+            decimal = solo_numeros[-2:]
+            valor_formateado = f"{entero}.{decimal}"
+        else:
+            # Si el número es muy pequeño, lo tratamos como decimal
+            valor_formateado = f"0.{solo_numeros.zfill(2)}"
+
+        # 4. Convertimos a float de forma segura
+        try:
+            return float(valor_formateado)
+        except ValueError:
+            return None 
+
     def filter_text_by_words (self, normalized_text, json_path ):
         with open(json_path, 'r', encoding='utf-8')as f:
             data = json.load(f)
-
-        
 
         all_cifs = []
         all_names = []
@@ -395,21 +420,52 @@ class GUI:
         regular_expresion_names_supplier = r'\b(' + '|'.join(all_names) + r')\b'
             
         clean_text = " ".join(normalized_text.split())
+        print(f"DEBUG: Texto a analizar: {clean_text[:2000]}") # Imprime los primeros 500 caracteres
         pattern = {
             "Supplier": regular_expresion_names_supplier,
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
             "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
             "CIF/NIF": regular_expresion_cif_supplier,
-            "Subtotal": r'(?i)(subtotal|base\s*imponible)\s*[.,:]\s*[\d.,]+\s*€',
-            "Total": r'(?i)total\s*[,.:]\s*[\d.,]+\s*€',
+            "Subtotal": r'(?i)(subtotal|base\s*imponible|total)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
+            "Total": r'(?i)total\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})',
             "Type_IVA": r'(?i)\d{1,2}\s*%' 
         }
+
+        match_iva = re.search(r'(?i)\bIVA\b', clean_text)
+    
+        # Dividimos el texto en dos partes
+        if match_iva:
+            # Texto antes de encontrar "IVA"
+            bloque_antes = clean_text[:match_iva.start()]
+            # Texto después de encontrar "IVA"
+            bloque_despues = clean_text[match_iva.start():]
+        else:
+            bloque_antes = clean_text
+            bloque_despues = ""
+
+        # Regex para extraer solo los números (ej: 759 53)
+        # Esta regex busca la palabra clave seguida de números separados por espacios o comas
+        regex_dinero = r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})'
+
+        # Buscamos en el bloque correspondiente
+        match_base = re.search(regex_dinero, bloque_antes)
+        match_iva_sub = re.search(regex_dinero, bloque_despues)
+
+        # Convertimos a formato float usando la función de limpieza anterior
+        base_imponible = self.limpiar_y_convertir_total(match_base.group(2)) if match_base else None
+        iva_total = self.limpiar_y_convertir_total(match_iva_sub.group(2)) if match_iva_sub else None
 
         results = {}
         for key, regular_expresion in pattern.items():
             match = re.search(regular_expresion, clean_text, re.IGNORECASE)
             results[key] = match.group(0) if match else None
-        
+
+        total_float = self.limpiar_y_convertir_total(results["Total"])
+        results["Total"] = total_float
+        results["Subtotal_base_imponible"] = base_imponible
+        results["Subtotal_IVA"] = iva_total
+
+
         return results
     
     def wrapper_set_bills (self):
@@ -466,6 +522,9 @@ class GUI:
             self.cif_number.value = ""
             self.refresh_supplier_list()
             self.page.update()
+
+    #refresh pantalla
+
 
     def save_supplier (self, name_value, alias_value, cif_value, file_path='suppliers.json'):
         new_supplier = {
@@ -670,7 +729,7 @@ class GUI:
                     
                     
         return datos_finales
-        
+       
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         if not nueva_lista_datos: return
 
@@ -814,7 +873,17 @@ class GUI:
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
+
+    def update_set_bills_excel (self, final_data, path_excel):
+        if not final_data: return
+        try:
+            columns = ['Fecha', 'Nº de factura', 'Proveedor', 'CIF/NIF', 'Concepto', 'Base imponible', 'Tipo de IVA', 'Cuota IVA', 'Total Factura']
+            df_new = pd.DataFrame(final_data)
+            df_new.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
             
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
+
     def procesar_todo(self):
          
         if not self.ruta_origen or not self.ruta_destino:
