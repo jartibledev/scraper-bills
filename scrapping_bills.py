@@ -312,14 +312,14 @@ class GUI:
 
         match_date_and_code = re.search(r'Ref Reserva:\s(?P<codigo>\d{8,})\s\((?P<fecha_inicio>\d{1,2}/\d{1,2}/\d{2,4})\s-\s(?P<fecha_fin>\d{1,2}/\d{1,2}/\d{2,4})\)')
 
-    def extraer_texto_completo(self, set_bills):
+    def extraer_texto_completo(self, bill):
         
         total_text = ""
-        for bill in set_bills:
-            with pdfplumber.open(bill) as pdf:
-                for page in pdf.pages:
-                    # Extrae el texto plano de toda la página
-                    total_text += page.extract_text() + "\n"
+        
+        with pdfplumber.open(bill) as pdf:
+            for page in pdf.pages:
+                # Extrae el texto plano de toda la página
+                total_text += page.extract_text() + "\n"
         
         return total_text
     
@@ -420,7 +420,7 @@ class GUI:
         regular_expresion_names_supplier = r'\b(' + '|'.join(all_names) + r')\b'
             
         clean_text = " ".join(normalized_text.split())
-        print(f"DEBUG: Texto a analizar: {clean_text[:2000]}") # Imprime los primeros 500 caracteres
+        
         pattern = {
             "Supplier": regular_expresion_names_supplier,
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
@@ -480,16 +480,23 @@ class GUI:
         else:
             results["Bill"] = None
 
-
-        print (results)
+        
+        
         return results
     
+ 
+
+            
     def wrapper_set_bills (self):
-        total_text = self.extraer_texto_completo (self.ruta_origen)
-        total_text_normalized = self.normalizar_texto(total_text)
-        filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_path='suppliers.json')
-        print(filtered_text)
-        return filtered_text 
+        list_bills = []
+        for bills in self.ruta_origen:
+            total_text = self.extraer_texto_completo (bills)
+            total_text_normalized = self.normalizar_texto(total_text)
+            filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_path='suppliers.json')
+            list_bills.append(filtered_text)
+            
+        print(list_bills)
+        return list_bills 
 
     def show_suppliers(self, data):
         data = self.json_to_dic(json_path="suppliers.json")
@@ -895,7 +902,7 @@ class GUI:
         try:
             columns = ['Fecha', 'Nº de factura', 'Proveedor', 'CIF/NIF', 'Concepto', 'Base imponible', 'Tipo de IVA', 'Cuota IVA', 'Total Factura']
             df_new = pd.DataFrame(final_data)
-            df_new.replace([0, '0', '', '0,0', '0,00', '0 €', 0.0], np.nan, inplace=True)
+            
             
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
