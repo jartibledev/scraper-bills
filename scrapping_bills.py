@@ -420,14 +420,14 @@ class GUI:
         regular_expresion_names_supplier = r'\b(' + '|'.join(all_names) + r')\b'
             
         clean_text = " ".join(normalized_text.split())
-        
+        print(clean_text)
         pattern = {
             "Supplier": regular_expresion_names_supplier,
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
             "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
             "CIF/NIF": regular_expresion_cif_supplier,
-            "Subtotal": r'(?i)(subtotal|base\s*imponible|total)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
-            "Total": r'(?i)total\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})',
+            "Subtotal": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
+            "Total": r'(?i)\btotal\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})',
             "Type_IVA": r'(?i)\d{1,2}\s*%' 
         }
 
@@ -445,7 +445,7 @@ class GUI:
 
         # Regex para extraer solo los números (ej: 759 53)
         # Esta regex busca la palabra clave seguida de números separados por espacios o comas
-        regex_dinero = r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})'
+        regex_dinero = r'(?i)(subtotal|base\s*imponible|total)\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})'
 
         # Buscamos en el bloque correspondiente
         match_base = re.search(regex_dinero, bloque_antes)
@@ -460,7 +460,7 @@ class GUI:
             match = re.search(regular_expresion, clean_text, re.IGNORECASE)
             results[key] = match.group(0) if match else None
 
-
+        print(results["Total"])
         total_float = self.limpiar_y_convertir_total(results["Total"])
         results["Total"] = total_float
         results["Subtotal_base_imponible"] = base_imponible
