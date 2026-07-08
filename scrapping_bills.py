@@ -296,7 +296,6 @@ class GUI:
         
         return total_text
     
-
     def normalizar_texto(self, total_text):
         # 1. Quitar tildes (convierte 'ó' en 'o')
         total_text = unicodedata.normalize('NFKD', total_text).encode('ascii', 'ignore').decode('utf-8')
@@ -306,16 +305,52 @@ class GUI:
         return total_text.lower()
     
     
-    def filter_text_by_words (self, normalized_text ):
+    def filter_text_by_words (self, normalized_text, json_data ):
+        data = json.loads(json_data)
+        suppliers = data["suppliers"]
+        dic_suppliers = {list_supplier['CIF']: list_supplier['name'] for list_supplier in suppliers}
+
+        all_cifs = []
+        all_names = []
+        for supplier in dic_suppliers:
+            all_names.append(re.escape(supplier['name']))
+            all_cifs.append(re.escape(supplier['CIF']))
+            for alias in supplier.get('alias', []):
+                all_names.append(re.escape(alias))
+        
+        regular_expresion_cif_supplier = r'\b('+'|'.join(all_cifs)+r')\b'
+        regular_expresion_names_supplier = r'\b(' + '|'.join(all_names) + r')\b'
+            
         clean_text = " ".joint(normalized_text.split())
         pattern = {
+            "Supplier": regular_expresion_names_supplier,
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
             "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
-            "CIF/NIF": r'[XYZ\d]\d{7}[A-Z]$|[ABCDEFGHJNPQRSUVW]\d{7}[\dA-Z]$',
+            "CIF/NIF": regular_expresion_cif_supplier,
             "Subtotal": r'(?i)(subtotal|base\s*imponible)\s*[.,:]\s*[\d.,]+\s*€',
             "Total": r'(?i)total\s*[,.:]\s*[\d.,]+\s*€',
             "Type_IVA": r'(?i)\d{1,2}\s*%' 
         }
+
+        results = {}
+        for key, regular_expresion in pattern.items():
+            match = re.search(regular_expresion, clean_text, re.IGNORECASE)
+            if match:
+                results[key] = match.group(0)
+            else:
+                results[key]= None
+        
+        return results
+    
+
+
+    def wrapper_set_bills (self):
+        total_text = self.extraer_texto_completo (self.ruta_origen)
+        total_text_normalized = self.normalizar_texto(total_text)
+        filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_data='suppliers.json')
+        return filtered_text 
+
+    
     def save_click(self, e):
             name = self.input_supplier_name.value
             cif= self.cif_number.value
@@ -363,10 +398,6 @@ class GUI:
         except json.JSONDecodeError:
             return{"suppliers": []}
 
-    def find_name_corporation (self, text):
-        head = text[:800]
-        lines = head.split('\n')
-        forbidden_words = ['factura', 'fecha', 'nif', 'cif', 'total','cliente']
 
 
     def calcular_diferencia_fechas(self, lista_cadenas):
