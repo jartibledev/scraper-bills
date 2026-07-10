@@ -954,26 +954,7 @@ class GUI:
 
                 date_format = NamedStyle(name = 'date_style', number_format='DD/MM/YYYY')
 
-                names_excel = df.columns.tolist()
-
-                for col_name in names_excel: # De la columna 1 a la 4 (A a D)
-                    col_idx = df.columns.get_loc(col_name) + 1
-                    col_letter = get_column_letter(col_idx)
-                    
-                    # Calcular el ancho necesario (el +2 es un pequeño margen de espacio)
-                    header_val = worksheet.cell(row=1, column=col_idx).value
-                    max_length = len(str(header_val)) if header_val else 0
-                    
-                    for cell in worksheet[col_letter][1:]:
-                        try:
-                            cell_value = str(cell.value) if cell.value else ""
-                            if len(cell_value) > max_length:
-                                max_length = len(cell_value)
-                        except:
-                            pass
-                    
-                    adjusted_width = max_length + 10
-                    worksheet.column_dimensions[col_letter].width = adjusted_width
+                self.space_heads(df=df, worksheet=worksheet)
 
                 for cell in worksheet['A'][1:]:
                     cell.style = date_format
@@ -998,6 +979,28 @@ class GUI:
 
         return get_column_letter(indice)
     
+    def space_heads (self, df, worksheet):
+        names_excel = df.columns.tolist()
+
+        for col_name in names_excel: # De la columna 1 a la 4 (A a D)
+            col_idx = df.columns.get_loc(col_name) + 1
+            col_letter = get_column_letter(col_idx)
+            
+            # Calcular el ancho necesario (el +2 es un pequeño margen de espacio)
+            header_val = worksheet.cell(row=1, column=col_idx).value
+            max_length = len(str(header_val)) if header_val else 0
+            
+            for cell in worksheet[col_letter][1:]:
+                try:
+                    cell_value = str(cell.value) if cell.value else ""
+                    if len(cell_value) > max_length:
+                        max_length = len(cell_value)
+                except:
+                    pass
+            
+            adjusted_width = max_length + 10
+            worksheet.column_dimensions[col_letter].width = adjusted_width
+
     def procesar_todo(self):
          
         if not self.ruta_origen or not self.ruta_destino:
