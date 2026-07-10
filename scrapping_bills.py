@@ -921,9 +921,13 @@ class GUI:
                 'Total': 'Total Factura'
             })
             df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst= True)
-        
+    
+            df_before = pd.read_excel(path_excel)
+            
+            df_final = pd.concat([df_before, df ], ignore_index = True)
+            
             with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, engine='openpyxl', sheet_name = 'Facturas')
+                df_final.to_excel(writer, index=False, engine='openpyxl', sheet_name = 'Facturas')
                 num_rows = len(df) + 1
 
                 workbook = writer.book
