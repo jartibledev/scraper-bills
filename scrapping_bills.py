@@ -961,15 +961,24 @@ class GUI:
                     cell.style = date_format
 
                 df_columns = len(df_final.columns)
+                
 
                 for row in worksheet.iter_rows(min_row=2, max_row=num_rows, min_col=1, max_col=df_columns):
                     for cell in row:
                         cell.font = font_text
                         cell.alignment = alignment_center
 
+                worksheet.row_dimensions[1].height = 30   
+                # Aplicar a la primera fila (encabezados)
+                for cell in worksheet[1]:
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = alignment_center
+
                 columna_base_imponible = self.get_letter_by_name(df_final, 'Base imponible')
                 columna_iva = self.get_letter_by_name(df_final, 'Cuota IVA')
                 columna_factura = self.get_letter_by_name(df_final, 'Total Factura')
+
 
                 worksheet[f'{columna_base_imponible}{num_rows + 2}'] = f'=SUM({columna_base_imponible}2:{columna_base_imponible}{num_rows})'
                 worksheet[f'{columna_iva}{num_rows + 2}'] = f'=SUM({columna_iva}2:{columna_iva}{num_rows})'
