@@ -921,10 +921,21 @@ class GUI:
                 'Total': 'Total Factura'
             })
             df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst= True)
-    
-            df_before = pd.read_excel(path_excel)
+            print(f"Tipo de df: {type(df)}")
+            if 'df_before' in locals():
+                print(f"Tipo de df_before: {type(df_before)}")
+
+            if os.path.exists(path_excel):
+                df_before = pd.read_excel(path_excel)
+                # Asegúrate de que ambos son DataFrames
+                if isinstance(df_before, pd.DataFrame) and isinstance(df, pd.DataFrame):
+                    df_final = pd.concat([df_before, df], ignore_index=True)
+                else:
+                    print("Error: Uno de los objetos no es un DataFrame de Pandas")
+            else:
+                df_final = df
+
             
-            df_final = pd.concat([df_before, df ], ignore_index = True)
             
             with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
                 df_final.to_excel(writer, index=False, engine='openpyxl', sheet_name = 'Facturas')
@@ -933,7 +944,36 @@ class GUI:
                 workbook = writer.book
                 worksheet = writer.sheets['Facturas']
                 
+                header_font = Font(bold=True, color="FFFFFF", name="Arial", size="15")
+                header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+                alignment_center = Alignment(horizontal='center', vertical='center')
+                header_total = Font(bold=True, color="FFFFFF",name="Arial", size="12")
+                format_euro = NamedStyle(name="format_euro", number_format='#,##0.00 "€"', alignment= alignment_center)
+                workbook.add_named_style(format_euro) # ¡Esto es vital!
+                font_text = Font(name='Arial', size=11, bold=False, color='000000')
+
                 date_format = NamedStyle(name = 'date_style', number_format='DD/MM/YYYY')
+
+                names_excel = df.columns.tolist()
+
+                for col_name in names_excel: # De la columna 1 a la 4 (A a D)
+                    col_idx = df.columns.get_loc(col_name) + 1
+                    col_letter = get_column_letter(col_idx)
+                    
+                    # Calcular el ancho necesario (el +2 es un pequeño margen de espacio)
+                    header_val = worksheet.cell(row=1, column=col_idx).value
+                    max_length = len(str(header_val)) if header_val else 0
+                    
+                    for cell in worksheet[col_letter][1:]:
+                        try:
+                            cell_value = str(cell.value) if cell.value else ""
+                            if len(cell_value) > max_length:
+                                max_length = len(cell_value)
+                        except:
+                            pass
+                    
+                    adjusted_width = max_length + 10
+                    worksheet.column_dimensions[col_letter].width = adjusted_width
 
                 for cell in worksheet['A'][1:]:
                     cell.style = date_format
