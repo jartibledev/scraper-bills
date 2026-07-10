@@ -928,7 +928,7 @@ class GUI:
             
             with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
                 df_final.to_excel(writer, index=False, engine='openpyxl', sheet_name = 'Facturas')
-                num_rows = len(df) + 1
+                num_rows = len(df_final) + 1
 
                 workbook = writer.book
                 worksheet = writer.sheets['Facturas']
@@ -938,15 +938,26 @@ class GUI:
                 for cell in worksheet['A'][1:]:
                     cell.style = date_format
                 
-                workbook.save(path_excel)
+                columna_base_imponible = self.get_letter_by_name(df_final, 'Base imponible')
+                columna_iva = self.get_letter_by_name(df_final, 'Cuota IVA')
+                columna_factura = self.get_letter_by_name(df_final, 'Total Factura')
 
-
+                worksheet[f'{columna_base_imponible}{num_rows + 2}'] = f'=SUM({columna_base_imponible}2:{columna_base_imponible}{num_rows})'
+                worksheet[f'{columna_iva}{num_rows + 2}'] = f'=SUM({columna_iva}2:{columna_iva}{num_rows})'
+                worksheet[f'{columna_factura}{num_rows + 2}'] = f'=SUM({columna_factura}2:{columna_factura}{num_rows})'
                 
-
-            
+                workbook.save(path_excel)
+ 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
 
+    def get_letter_by_name(self, df, nombre_columna):
+        # En pandas, df.columns.get_loc(nombre) te da el índice (0, 1, 2...)
+        # +1 porque openpyxl empieza a contar columnas en 1
+        indice = df.columns.get_loc(nombre_columna) + 1
+
+        return get_column_letter(indice)
+    
     def procesar_todo(self):
          
         if not self.ruta_origen or not self.ruta_destino:
