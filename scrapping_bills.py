@@ -426,7 +426,7 @@ class GUI:
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
             "Supplier": regular_expresion_names_supplier,
             "CIF/NIF": regular_expresion_cif_supplier,
-            "Concepto": "",
+            "Concept": "",
             "Subtotal_base_imponible": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*',
             "Type_IVA": r'(?i)\d{1,2}\s*%',
             "Subtotal_IVA": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
@@ -492,6 +492,7 @@ class GUI:
         else:
             results["Date"] = None
 
+         
 
         return results
              
@@ -918,7 +919,8 @@ class GUI:
                 'Subtotal_base_imponible': 'Base imponible',
                 'Type_IVA': 'Tipo IVA(%)',
                 'Subtotal_IVA': 'Cuota IVA',
-                'Total': 'Total Factura'
+                'Total': 'Total Factura',
+                'Concept':'Concepto'
             })
             df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst= True)
             print(f"Tipo de df: {type(df)}")
@@ -935,7 +937,11 @@ class GUI:
             else:
                 df_final = df
 
-            
+            columns_text = ['Proveedor', 'Concepto', 'CIF/NIF']
+            for col in columns_text:
+                if col in df_final.columns:
+                    df_final[col] = df_final[col].str.title()
+
             
             with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
                 df_final.to_excel(writer, index=False, sheet_name = 'Facturas')
@@ -984,6 +990,15 @@ class GUI:
                 worksheet[f'{columna_iva}{num_rows + 2}'] = f'=SUM({columna_iva}2:{columna_iva}{num_rows})'
                 worksheet[f'{columna_factura}{num_rows + 2}'] = f'=SUM({columna_factura}2:{columna_factura}{num_rows})'
                 
+                columns_money = ['Base imponible', 'Cuota IVA', 'Total Factura']
+
+                for col_name in columns_money:
+                    col_money_index = df.columns.get_loc(col_name) + 1
+                    col_money_letter = get_column_letter(col_money_index)
+
+                    for cell in worksheet [col_money_letter][1:]:
+                        cell.style = format_euro
+                        
             workbook.save(path_excel)
  
         except Exception as e:
