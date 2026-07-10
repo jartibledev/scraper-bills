@@ -422,11 +422,11 @@ class GUI:
         clean_text = " ".join(normalized_text.split())
         print(clean_text)
         pattern = {
+            "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
             "Supplier": regular_expresion_names_supplier,
             "CIF/NIF": regular_expresion_cif_supplier,
             "Concepto": "",
-            "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
             "Subtotal_base_imponible": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*',
             "Type_IVA": r'(?i)\d{1,2}\s*%',
             "Subtotal_IVA": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
@@ -906,6 +906,15 @@ class GUI:
         try:
             columns = ['Fecha', 'Nº de factura', 'Proveedor', 'CIF/NIF', 'Concepto', 'Base imponible', 'Tipo de IVA', 'Cuota IVA', 'Total Factura']
             df = pd.DataFrame(list_bills)
+            df = df.rename(columns={
+                'Date': 'Fecha',
+                'Bill': 'Nº de factura',
+                'Supplier': 'Proveedor',
+                'Subtotal_base_imponible': 'Base imponible',
+                'Type_IVA': 'Tipo IVA(%)',
+                'Subtotal_IVA': 'Cuota IVA',
+                'Total': 'Total Factura'
+            })
             df.to_excel(path_excel, index=False, engine='openpyxl')
 
             
