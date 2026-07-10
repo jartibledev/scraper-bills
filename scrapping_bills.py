@@ -938,7 +938,7 @@ class GUI:
             
             
             with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
-                df_final.to_excel(writer, index=False, engine='openpyxl', sheet_name = 'Facturas')
+                df_final.to_excel(writer, index=False, sheet_name = 'Facturas')
                 num_rows = len(df_final) + 1
 
                 workbook = writer.book
@@ -952,13 +952,14 @@ class GUI:
                 workbook.add_named_style(format_euro) # ¡Esto es vital!
                 font_text = Font(name='Arial', size=11, bold=False, color='000000')
 
-                date_format = NamedStyle(name = 'date_style', number_format='DD/MM/YYYY')
-
                 self.space_heads(df=df, worksheet=worksheet)
 
-                for cell in worksheet['A'][1:]:
+                date_format = NamedStyle(name = 'date_style', number_format='DD/MM/YYYY')
+                columna_fecha = self.get_letter_by_name(df_final, 'Fecha')
+
+                for cell in worksheet[f'{columna_fecha}'][1:]:
                     cell.style = date_format
-                
+               
                 columna_base_imponible = self.get_letter_by_name(df_final, 'Base imponible')
                 columna_iva = self.get_letter_by_name(df_final, 'Cuota IVA')
                 columna_factura = self.get_letter_by_name(df_final, 'Total Factura')
@@ -967,7 +968,7 @@ class GUI:
                 worksheet[f'{columna_iva}{num_rows + 2}'] = f'=SUM({columna_iva}2:{columna_iva}{num_rows})'
                 worksheet[f'{columna_factura}{num_rows + 2}'] = f'=SUM({columna_factura}2:{columna_factura}{num_rows})'
                 
-                workbook.save(path_excel)
+            workbook.save(path_excel)
  
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
