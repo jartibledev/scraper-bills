@@ -959,7 +959,14 @@ class GUI:
 
                 for cell in worksheet[f'{columna_fecha}'][1:]:
                     cell.style = date_format
-               
+
+                df_columns = len(df_final.columns)
+
+                for row in worksheet.iter_rows(min_row=2, max_row=num_rows, min_col=1, max_col=df_columns):
+                    for cell in row:
+                        cell.font = font_text
+                        cell.alignment = alignment_center
+
                 columna_base_imponible = self.get_letter_by_name(df_final, 'Base imponible')
                 columna_iva = self.get_letter_by_name(df_final, 'Cuota IVA')
                 columna_factura = self.get_letter_by_name(df_final, 'Total Factura')
