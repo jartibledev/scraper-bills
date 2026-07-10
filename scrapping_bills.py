@@ -473,23 +473,28 @@ class GUI:
 
         # El patrón busca "Serie y número", ignora separadores y captura solo el número
         pattern_bill = r'(?i)serie\s*y\s*n[uú]mero\s*[:.,\s]*\s*(\d+/\d+)'
+        pattern_date = r'(?i)fecha\s*[:.,\s]*\s*(\d{1,2}/\d{1,2}/\d{2,4})'
+
 
         # En tu código de procesamiento:
-        match = re.search(pattern_bill, clean_text)
+        match_bill = re.search(pattern_bill, clean_text)
 
-        if match:
+        if match_bill:
             # group(1) contiene solo lo que está entre paréntesis (2026/158)
-            results["Bill"] = match.group(1)
+            results["Bill"] = match_bill.group(1)
         else:
-            results["Bill"] = None
+            match_bill["Bill"] = None
 
-        
-        
+        match_date = re.search(pattern_date, clean_text)
+
+        if match_date:
+            results["Date"] = match_date.group(1)
+        else:
+            results["Date"] = None
+
+
         return results
-    
- 
-
-            
+             
     def wrapper_set_bills (self):
         list_bills = []
         for bills in self.ruta_origen:
@@ -915,7 +920,24 @@ class GUI:
                 'Subtotal_IVA': 'Cuota IVA',
                 'Total': 'Total Factura'
             })
-            df.to_excel(path_excel, index=False, engine='openpyxl')
+            df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst= True)
+        
+            with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, engine='openpyxl', sheet_name = 'Facturas')
+                num_rows = len(df) + 1
+
+                workbook = writer.book
+                worksheet = writer.sheets['Facturas']
+                
+                date_format = NamedStyle(name = 'date_style', number_format='DD/MM/YYYY')
+
+                for cell in worksheet['A'][1:]:
+                    cell.style = date_format
+                
+                workbook.save(path_excel)
+
+
+                
 
             
         except Exception as e:
