@@ -12,38 +12,31 @@ from openpyxl.styles import Font, PatternFill, Alignment, NamedStyle
 from openpyxl.utils import get_column_letter
 import platform
 import subprocess
+import unicodedata
+import json
 
 @ft.control
-class GUI(ft.Column):
-    def __init__(self):
-        super().__init__()
-        
+class GUI:
+    def __init__(self, page: ft.Page):
+           
+        self.page = page
         self.ruta_origen = []
         self.ruta_destino = ""
-        
+        self.page.theme_mode = ft.ThemeMode.LIGHT
         self.contenedor_lista=ft.Column()
-        self.width = 600
         self.visor = ft.Button(
                     "Abrir reporte en Excel",
                     disabled = True,
                     icon=ft.Icons.LOUPE,
                     on_click= self.abrir_archivo_excel
                         )
-        self.controls = [
-            ft.Column(
-                controls=[
-               
-                ft.Row(
-                    controls=[
-                        ft.Button("Elige la factura", 
+        self.select_bills = ft.Button("Elige la factura", 
                                 icon=ft.Icons.FILE_COPY,
-                                on_click=self.seleccionar_archivo),
-                        ft.Button("Elige el archivo excel de destino",
+                                on_click=self.seleccionar_archivo)
+        self.select_excel = ft.Button("Elige el archivo excel de destino",
                                 icon=ft.Icons.LIST, 
-                              on_click=self.seleccionar_destino),
-                        # Suponiendo que tienes un botón
-                        
-                        ft.Button("Procesar Facturas",
+                              on_click=self.seleccionar_destino)
+        self.procces_bills = ft.Button("Procesar Facturas",
                                     style=ft.ButtonStyle(
                                     color=ft.Colors.WHITE,
                                     bgcolor=ft.Colors.GREEN_800,
@@ -53,14 +46,18 @@ class GUI(ft.Column):
                                icon_color=ft.Colors.WHITE,
                                
                                
-                               on_click=self.procesar_todo),
+                               on_click=self.procesar_todo)
+        self.row_procces_bills = ft.Row(
+                    controls=[
+                       self.select_bills,
+                       self.select_excel,
+                       self.procces_bills,
                 ],
                     alignment=ft.MainAxisAlignment.CENTER, 
-                    spacing= 15
-            ),
-            
-            ft.Column(
-                
+                    spacing= 15,
+                    
+            )
+        self.column_visor_excel_and_bills = ft.Column( 
                 controls=[
                     self.visor,
                     ft.Text("Facturas seleccionadas"),
@@ -75,10 +72,178 @@ class GUI(ft.Column):
                     
 
                 ],
+                
+                spacing= 15
             )
-            ]) 
+        
+         
+        self.input_supplier_name = ft.TextField(label="Nombre del proveedor")
+        self.alias_supplier_input = ft.TextField(label="Alias (separados por comas)")
+        self.cif_number = ft.TextField(label="Escribe el CIF")
+        self.list_supplier_view = ft.ListView(height=200, expand=True, spacing=10)
+        self.button_save = ft.Button("Añadir Proveedor", on_click=self.save_click)
+        
+        self.procces_set_bills = ft.Button("Procesar lote de facturas",
+                                           style =ft.ButtonStyle(
+                                               color=ft.Colors.WHITE,
+                                               bgcolor=ft.Colors.GREEN_800,
+                                               overlay_color = ft.Colors.GREEN_600,
+                                           ),
+                                           icon= ft.Icons.FILE_DOWNLOAD,
+                                           icon_color= ft.Colors.WHITE,
+                                           on_click = self.wrapper_set_bills
+                                           )
+        self.proccess_set_bills_row = ft.Row(
+            controls=[
+                self.select_bills,
+                self.select_excel,
+                self.procces_set_bills
+            ],
+            alignment = ft.MainAxisAlignment.CENTER,
+            spacing= 15,
+        )
+
+        self.container_set_bills = ft.Container(
+            content = ft.Column(
+                controls=[
+                    self.proccess_set_bills_row,
+                    self.column_visor_excel_and_bills
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+        )  
+        
+        self.scrapper_bills = ft.Container(
+            content=ft.Column(
+                controls=[
+                    self.row_procces_bills,
+                    self.column_visor_excel_and_bills
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            # Aquí puedes añadir otras propiedades como padding, border, etc.
+            padding=20,
+            border_radius=10
+        ) 
+        self.button_supplier_visor_row = ft.Button(content="")
+        self.button_supplier_delete_row = ft.IconButton(icon=ft.Icons.DELETE, icon_color=ft.Colors.RED, icon_size=30, tooltip="Eliminar")
+        self.row_visor_supplier = ft.Row(
+            controls = [
+                self.button_supplier_visor_row,
+                self.button_supplier_delete_row
+            ]
+        )
+        self.container_visor_suppliers = ft.Column(
+                controls=[
+                    
+                ]
+                
+            )
+        
+
+        self.settings_container = ft.Container(
+
+                    content=ft.Column(
+                        controls=[
+                            ft.Text("Settings", size=20)
+                        ]
+                    )
+                )
+        self.supplier_box =ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text("Gestión de proovedores", size=20),
+                    self.input_supplier_name,
+                    self.alias_supplier_input,
+                    self.cif_number,
+                    self.list_supplier_view,
+                    self.button_save
+                ]
+            ),bgcolor=ft.Colors.WHITE, # Fondo blanco para contrastar
+            padding=20,
+            width=350
+            )
+        
+        self.supplier_container = ft.Container(
+            content= ft.Row(
+                controls=[
+                    self.supplier_box,
+                    self.container_visor_suppliers
+                ]
+            ),
+            padding=20,
+            border=ft.Border.all(1, ft.Colors.BLUE_GREY),
+            border_radius=10,
+            expand=True   
+        )
+
+        
+        
+        self.settings_tabs = ft.Tab(label="Configuración", icon=ft.Icons.SETTINGS)
+        self.suppliers_tabs = ft.Tab(label="Proveedores", icon=ft.Icons.SHOP)
+        self.scrapper_bills_tabs = ft.Tab(label="Pasar factura a excel", icon=ft.Icons.FILE_COPY_OUTLINED)
+        self.set_bills_tabs = ft.Tab(label="Procesar lote de facturas", icon=ft.Icons.FOLDER_COPY_OUTLINED)
+
+        self.tabs_dic = [
+            self.scrapper_bills_tabs,
+            self.set_bills_tabs,
+            self.suppliers_tabs,
+            self.settings_tabs,
             
         ]
+
+        self.tabBar = ft.TabBar(
+            tabs=[
+                self.scrapper_bills_tabs,
+                self.set_bills_tabs,
+                self.suppliers_tabs,
+                self.settings_tabs,
+                
+            ]
+
+        )
+        self.tabBarView = ft.TabBarView(
+            expand=True,
+            controls=[
+                self.scrapper_bills,
+                self.container_set_bills,
+                self.supplier_container,
+                self.settings_container
+            ]
+        )
+        self.column_tabs = ft.Column(
+            expand=True,
+            controls = [
+                self.tabBar,
+                self.tabBarView
+            ]
+        )
+
+        
+        self.tabs = ft.Tabs(
+            selected_index=1,
+            length=len(self.tabs_dic),
+            expand=True,
+            content = self.column_tabs,
+            on_change= self.on_tab_change 
+        )  
+    
+        self.layout = ft.Row( 
+            controls = [
+                self.tabs,
+            ],expand =True
+            )
+        
+        self.page.add(self.layout)
+        
+        self.page.update()
+
+    def toggle_suppliers_view(self, e):
+        self.supplier_box.visible = True
+        self.page.update()
+
     def abrir_archivo_excel(self):
         """Abre el archivo en el programa predeterminado del SO."""
         try:
@@ -101,7 +266,8 @@ class GUI(ft.Column):
         self.contenedor_lista.controls = [
             ft.Text(f"• {names}", size=12, color=ft.Colors.WHITE ) for names in list_names 
         ]
-        self.update()
+        self.page.update()
+
     def seleccionar_archivo(self):
         
         # 1. Creamos una ventana raíz oculta de Tkinter
@@ -146,15 +312,301 @@ class GUI(ft.Column):
 
         match_date_and_code = re.search(r'Ref Reserva:\s(?P<codigo>\d{8,})\s\((?P<fecha_inicio>\d{1,2}/\d{1,2}/\d{2,4})\s-\s(?P<fecha_fin>\d{1,2}/\d{1,2}/\d{2,4})\)')
 
-    def extraer_texto_completo(self, pdf_path):
+    def extraer_texto_completo(self, bill):
         
-        texto_total = ""
-        with pdfplumber.open(pdf_path) as pdf:
+        total_text = ""
+        
+        with pdfplumber.open(bill) as pdf:
             for page in pdf.pages:
                 # Extrae el texto plano de toda la página
-                texto_total += page.extract_text() + "\n"
+                total_text += page.extract_text() + "\n"
         
-        return texto_total
+        return total_text
+    
+    def normalizar_texto(self, total_text):
+        # 1. Quitar tildes (convierte 'ó' en 'o')
+        total_text = unicodedata.normalize('NFKD', total_text).encode('ascii', 'ignore').decode('utf-8')
+        # 2. Convertir a minúsculas
+        # 3. Sustituir signos de puntuación extraños por espacios
+        total_text = re.sub(r'[,.:;]', ' ', total_text)
+        return total_text.lower()
+    
+    def get_json (self, json_path):
+        with open(json_path, 'r', encoding='utf-8')as f:
+            data = json.load(f)
+
+        
+
+        all_cifs = []
+        all_names = []
+        suppliers = data["suppliers"]
+
+        for supplier in suppliers:
+            # Aquí 'supplier' es {'name': 'Endesa', 'CIF': 'B12345678', ...}
+            # Esto permite acceder por clave sin problemas
+            name = supplier.get('name', '')
+            cif = supplier.get('CIF', '')
+        
+        if name:
+            all_names.append(re.escape(name))
+        if cif:
+            all_cifs.append(re.escape(cif))
+            
+        for alias in supplier.get('alias', []):
+            all_names.append(re.escape(alias))
+        
+        dic_suppliers = {
+            "all_names" : all_names,
+            "all_cifs" : all_cifs
+        }
+        return dic_suppliers     
+        
+
+    def json_to_dic (self, json_path="suppliers.json"):
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+
+    def limpiar_y_convertir_total(self, match_text):
+        if not match_text:
+            return None
+        
+        # 1. Eliminamos todo lo que no sea un dígito
+        # Esto elimina "total", ":", "€", espacios, etc.
+        solo_numeros = re.sub(r'\D', '', match_text)
+        
+        # 2. Si después de limpiar no queda nada (ej. el OCR leyó solo letras), devolvemos None
+        if not solo_numeros:
+            return None
+        
+        # 3. Aplicamos la lógica de decimales (asumiendo que los últimos 2 son centavos)
+        if len(solo_numeros) > 2:
+            entero = solo_numeros[:-2]
+            decimal = solo_numeros[-2:]
+            valor_formateado = f"{entero}.{decimal}"
+        else:
+            # Si el número es muy pequeño, lo tratamos como decimal
+            valor_formateado = f"0.{solo_numeros.zfill(2)}"
+
+        # 4. Convertimos a float de forma segura
+        try:
+            return float(valor_formateado)
+        except ValueError:
+            return None 
+
+    def filter_text_by_words (self, normalized_text, json_path ):
+        with open(json_path, 'r', encoding='utf-8')as f:
+            data = json.load(f)
+
+        all_cifs = []
+        all_names = []
+        suppliers = data["suppliers"]
+
+        for supplier in suppliers:
+            # Aquí 'supplier' es {'name': 'Endesa', 'CIF': 'B12345678', ...}
+            # Esto permite acceder por clave sin problemas
+            name = supplier.get('name', '')
+            cif = supplier.get('CIF', '')
+        
+        if name:
+            all_names.append(re.escape(name))
+        if cif:
+            all_cifs.append(re.escape(cif))
+            
+        for alias in supplier.get('alias', []):
+            all_names.append(re.escape(alias)) 
+    
+        regular_expresion_cif_supplier = r'\b('+'|'.join(all_cifs)+r')\b'
+        regular_expresion_names_supplier = r'\b(' + '|'.join(all_names) + r')\b'
+            
+        clean_text = " ".join(normalized_text.split())
+        print(clean_text)
+        pattern = {
+            "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
+            "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
+            "Supplier": regular_expresion_names_supplier,
+            "CIF/NIF": regular_expresion_cif_supplier,
+            "Concept": "",
+            "Subtotal_base_imponible": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*',
+            "Type_IVA": r'(?i)\d{1,2}\s*%',
+            "Subtotal_IVA": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
+            "Total": r'(?i)\btotal\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})',
+            
+        }
+
+        match_iva = re.search(r'(?i)\bIVA\b', clean_text)
+    
+        # Dividimos el texto en dos partes
+        if match_iva:
+            # Texto antes de encontrar "IVA"
+            bloque_antes = clean_text[:match_iva.start()]
+            # Texto después de encontrar "IVA"
+            bloque_despues = clean_text[match_iva.start():]
+        else:
+            bloque_antes = clean_text
+            bloque_despues = ""
+
+        # Regex para extraer solo los números (ej: 759 53)
+        # Esta regex busca la palabra clave seguida de números separados por espacios o comas
+        regex_dinero = r'(?i)(subtotal|base\s*imponible|total)\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})'
+
+        # Buscamos en el bloque correspondiente
+        match_base = re.search(regex_dinero, bloque_antes)
+        match_iva_sub = re.search(regex_dinero, bloque_despues)
+
+        # Convertimos a formato float usando la función de limpieza anterior
+        base_imponible = self.limpiar_y_convertir_total(match_base.group(2)) if match_base else None
+        iva_total = self.limpiar_y_convertir_total(match_iva_sub.group(2)) if match_iva_sub else None
+
+        results = {}
+        for key, regular_expresion in pattern.items():
+            match = re.search(regular_expresion, clean_text, re.IGNORECASE)
+            results[key] = match.group(0) if match else None
+
+        print(results["Total"])
+        total_float = self.limpiar_y_convertir_total(results["Total"])
+        results["Total"] = total_float
+        results["Subtotal_base_imponible"] = base_imponible
+        results["Subtotal_IVA"] = iva_total
+
+        
+
+        # El patrón busca "Serie y número", ignora separadores y captura solo el número
+        pattern_bill = r'(?i)serie\s*y\s*n[uú]mero\s*[:.,\s]*\s*(\d+/\d+)'
+        pattern_date = r'(?i)fecha\s*[:.,\s]*\s*(\d{1,2}/\d{1,2}/\d{2,4})'
+
+
+        # En tu código de procesamiento:
+        match_bill = re.search(pattern_bill, clean_text)
+
+        if match_bill:
+            # group(1) contiene solo lo que está entre paréntesis (2026/158)
+            results["Bill"] = match_bill.group(1)
+        else:
+            match_bill["Bill"] = None
+
+        match_date = re.search(pattern_date, clean_text)
+
+        if match_date:
+            results["Date"] = match_date.group(1)
+        else:
+            results["Date"] = None
+
+         
+
+        return results
+             
+    def wrapper_set_bills (self):
+        list_bills = []
+        for bills in self.ruta_origen:
+            total_text = self.extraer_texto_completo (bills)
+            total_text_normalized = self.normalizar_texto(total_text)
+            filtered_text = self.filter_text_by_words (normalized_text=total_text_normalized, json_path='suppliers.json')
+            list_bills.append(filtered_text)
+        self.update_set_bills_excel(list_bills=list_bills, path_excel=self.ruta_destino)
+            
+        print(list_bills)
+        return list_bills 
+
+    def show_suppliers(self, data):
+        data = self.json_to_dic(json_path="suppliers.json")
+        list_suppliers = data["suppliers"]
+        
+        self.container_visor_suppliers.controls = [
+            ft.Row(
+                controls=[
+                    ft.Button(content= s["name"]),
+                    ft.IconButton(
+                        icon=ft.Icons.DELETE,
+                        icon_color=ft.Colors.RED,
+                        on_click=lambda e, cif=s["CIF"]: self.delete_supplier_by_cif(cif)
+                    )
+                ],
+                alignment= ft.MainAxisAlignment.START
+            )
+            for s in list_suppliers
+            
+        ]
+        self.container_visor_suppliers.update()
+
+    def on_tab_change(self, e):
+        selected_tab = self.tabs_dic[e.control.selected_index]
+        if selected_tab.label == "Proveedores":
+            data = self.json_to_dic
+            self.show_suppliers(data)
+            self.page.update()      
+
+
+    def save_click(self):
+            name = self.input_supplier_name.value
+            cif= self.cif_number.value
+            alias = self.alias_supplier_input.value
+
+            new_supplier = {
+                "name": name,
+                "CIF": cif,
+                "alias": [a.strip() for a in alias.split(".")]
+            }
+        
+            self.save_supplier( name_value=name, alias_value= alias, cif_value=cif, file_path='suppliers.json')
+            self.list_supplier_view.controls.append(ft.Text(f"🏢 {new_supplier['name']}"))
+            self.input_supplier_name.value = ""
+            self.alias_supplier_input.value = ""
+            self.cif_number.value = ""
+            self.refresh_supplier_list()
+            self.page.update()
+
+    #refresh pantalla
+
+
+    def save_supplier (self, name_value, alias_value, cif_value, file_path='suppliers.json'):
+        new_supplier = {
+                "name": name_value,
+                "CIF": cif_value,
+                "alias": [a.strip() for a in alias_value.split(",")]
+            }
+        # 1. Cargamos lo que ya existe
+        data = self.load_suppliers(file_path)
+        
+        # 2. Añadimos el nuevo
+        data["suppliers"].append(new_supplier)
+        print(f"Guardando en: {os.path.abspath(file_path)}")
+        # 3. Guardamos todo de vuelta
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=4, ensure_ascii=False)
+            file.flush() # Fuerza el volcado al disco
+            os.fsync(file.fileno()) # Fuerza la escritura física
+        print("Guardado completado exitosamente.") # Mira si esto aparece en la consola
+
+    def load_suppliers (self, file_path):
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            return{"suppliers": []}
+         
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except json.JSONDecodeError:
+            return{"suppliers": []}
+
+    def delete_supplier_by_cif(self, cif_to_delete):
+        with open('suppliers.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Filtramos por CIF. Como el CIF es único, solo se borrará ese bloque.
+        data["suppliers"] = [s for s in data["suppliers"] if s["CIF"] != cif_to_delete]
+        
+        with open('suppliers.json', 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        
+        self.refresh_supplier_list()
+
+
+    def refresh_supplier_list(self):
+        with open("suppliers.json", 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        self.show_suppliers(data)
+        self.page.update()
+
 
     def calcular_diferencia_fechas(self, lista_cadenas):
         resultados = []
@@ -216,7 +668,7 @@ class GUI(ft.Column):
         texto_total_pdf = self.extraer_texto_completo(ruta_pdf)
         texto_limpio = " ".join(texto_total_pdf.split())
        
-        patron = r'Ref\s*Reserva.*?(\d{8,})\s*\((.*?)\s*-\s*(.*?)\)'
+        patron = r'Ref\s*Reserva.*?(\d{4,})\s*\((.*?)\s*-\s*(.*?)\)'
         reservas_encontradas = list(re.finditer(patron, texto_total_pdf, re.IGNORECASE | re.DOTALL))
         
         array_plano = [m.group(0) for m in reservas_encontradas]
@@ -310,7 +762,7 @@ class GUI(ft.Column):
                     
                     
         return datos_finales
-        
+       
     def actualizar_excel(self, nueva_lista_datos, ruta_excel):
         if not nueva_lista_datos: return
 
@@ -454,7 +906,133 @@ class GUI(ft.Column):
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
+
+    def update_set_bills_excel (self, list_bills, path_excel, name ="facturas_prueba.xlsx"):
+        if not list_bills: return
+        try:
+            columns = ['Fecha', 'Nº de factura', 'Proveedor', 'CIF/NIF', 'Concepto', 'Base imponible', 'Tipo de IVA', 'Cuota IVA', 'Total Factura']
+            df = pd.DataFrame(list_bills)
+            df = df.rename(columns={
+                'Date': 'Fecha',
+                'Bill': 'Nº de factura',
+                'Supplier': 'Proveedor',
+                'Subtotal_base_imponible': 'Base imponible',
+                'Type_IVA': 'Tipo IVA(%)',
+                'Subtotal_IVA': 'Cuota IVA',
+                'Total': 'Total Factura',
+                'Concept':'Concepto'
+            })
+            df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst= True)
+            print(f"Tipo de df: {type(df)}")
+            if 'df_before' in locals():
+                print(f"Tipo de df_before: {type(df_before)}")
+
+            if os.path.exists(path_excel):
+                df_before = pd.read_excel(path_excel)
+                # Asegúrate de que ambos son DataFrames
+                if isinstance(df_before, pd.DataFrame) and isinstance(df, pd.DataFrame):
+                    df_final = pd.concat([df_before, df], ignore_index=True)
+                else:
+                    print("Error: Uno de los objetos no es un DataFrame de Pandas")
+            else:
+                df_final = df
+
+            columns_text = ['Proveedor', 'Concepto', 'CIF/NIF']
+            for col in columns_text:
+                if col in df_final.columns:
+                    df_final[col] = df_final[col].str.title()
+
             
+            with pd.ExcelWriter(path_excel, engine='openpyxl') as writer:
+                df_final.to_excel(writer, index=False, sheet_name = 'Facturas')
+                num_rows = len(df_final) + 1
+
+                workbook = writer.book
+                worksheet = writer.sheets['Facturas']
+                
+                header_font = Font(bold=True, color="FFFFFF", name="Arial", size="15")
+                header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+                alignment_center = Alignment(horizontal='center', vertical='center')
+                header_total = Font(bold=True, color="FFFFFF",name="Arial", size="12")
+                format_euro = NamedStyle(name="format_euro", number_format='#,##0.00 "€"', alignment= alignment_center)
+                workbook.add_named_style(format_euro) # ¡Esto es vital!
+                font_text = Font(name='Arial', size=11, bold=False, color='000000')
+
+                self.space_heads(df=df, worksheet=worksheet)
+
+                date_format = NamedStyle(name = 'date_style', number_format='DD/MM/YYYY')
+                columna_fecha = self.get_letter_by_name(df_final, 'Fecha')
+
+                for cell in worksheet[f'{columna_fecha}'][1:]:
+                    cell.style = date_format
+
+                df_columns = len(df_final.columns)
+                
+
+                for row in worksheet.iter_rows(min_row=2, max_row=num_rows, min_col=1, max_col=df_columns):
+                    for cell in row:
+                        cell.font = font_text
+                        cell.alignment = alignment_center
+
+                worksheet.row_dimensions[1].height = 30   
+                # Aplicar a la primera fila (encabezados)
+                for cell in worksheet[1]:
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = alignment_center
+
+                columna_base_imponible = self.get_letter_by_name(df_final, 'Base imponible')
+                columna_iva = self.get_letter_by_name(df_final, 'Cuota IVA')
+                columna_factura = self.get_letter_by_name(df_final, 'Total Factura')
+
+
+                worksheet[f'{columna_base_imponible}{num_rows + 2}'] = f'=SUM({columna_base_imponible}2:{columna_base_imponible}{num_rows})'
+                worksheet[f'{columna_iva}{num_rows + 2}'] = f'=SUM({columna_iva}2:{columna_iva}{num_rows})'
+                worksheet[f'{columna_factura}{num_rows + 2}'] = f'=SUM({columna_factura}2:{columna_factura}{num_rows})'
+                
+                columns_money = ['Base imponible', 'Cuota IVA', 'Total Factura']
+
+                for col_name in columns_money:
+                    col_money_index = df.columns.get_loc(col_name) + 1
+                    col_money_letter = get_column_letter(col_money_index)
+
+                    for cell in worksheet [col_money_letter][1:]:
+                        cell.style = format_euro
+                        
+            workbook.save(path_excel)
+ 
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
+
+    def get_letter_by_name(self, df, nombre_columna):
+        # En pandas, df.columns.get_loc(nombre) te da el índice (0, 1, 2...)
+        # +1 porque openpyxl empieza a contar columnas en 1
+        indice = df.columns.get_loc(nombre_columna) + 1
+
+        return get_column_letter(indice)
+    
+    def space_heads (self, df, worksheet):
+        names_excel = df.columns.tolist()
+
+        for col_name in names_excel: # De la columna 1 a la 4 (A a D)
+            col_idx = df.columns.get_loc(col_name) + 1
+            col_letter = get_column_letter(col_idx)
+            
+            # Calcular el ancho necesario (el +2 es un pequeño margen de espacio)
+            header_val = worksheet.cell(row=1, column=col_idx).value
+            max_length = len(str(header_val)) if header_val else 0
+            
+            for cell in worksheet[col_letter][1:]:
+                try:
+                    cell_value = str(cell.value) if cell.value else ""
+                    if len(cell_value) > max_length:
+                        max_length = len(cell_value)
+                except:
+                    pass
+            
+            adjusted_width = max_length + 10
+            worksheet.column_dimensions[col_letter].width = adjusted_width
+
     def procesar_todo(self):
          
         if not self.ruta_origen or not self.ruta_destino:
@@ -487,13 +1065,12 @@ class GUI(ft.Column):
 
 def main(page: ft.Page):
     # Instanciamos nuestra clase y la añadimos a la página
-    app = GUI()
-    page.add(app)
-    page.title = "Procesador de facturas"
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.update()
+    page.title = "Scrapper bills"
+    page.window.width = 900
+    page.window.height = 700
+    app = GUI(page)
     
 
     
-ft.run(main)
+if __name__ == "__main__":
+    ft.run(main)
