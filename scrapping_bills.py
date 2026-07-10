@@ -422,13 +422,16 @@ class GUI:
         clean_text = " ".join(normalized_text.split())
         print(clean_text)
         pattern = {
-            "Supplier": regular_expresion_names_supplier,
             "Bill" :r'(?i)serie\s*y\s*n[uú]mero\s[,.:]*?\d{4,}/\d{3,}',
-            "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
+            "Supplier": regular_expresion_names_supplier,
             "CIF/NIF": regular_expresion_cif_supplier,
-            "Subtotal": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
+            "Concepto": "",
+            "Date" : r'(?i)fecha(\s+operaci[oó]n)?\s*[.:,\s]*\d{1,2}/\d{1,2}/\d{2,4}',
+            "Subtotal_base_imponible": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*',
+            "Type_IVA": r'(?i)\d{1,2}\s*%',
+            "Subtotal_IVA": r'(?i)(subtotal|base\s*imponible)\s*[:.,\s]*\s*([\d\s.,]+)\s*', 
             "Total": r'(?i)\btotal\s*[:.,\s]*\s*(\d+[\s.,]?\d{0,2})',
-            "Type_IVA": r'(?i)\d{1,2}\s*%' 
+            
         }
 
         match_iva = re.search(r'(?i)\bIVA\b', clean_text)
@@ -904,6 +907,7 @@ class GUI:
             columns = ['Fecha', 'Nº de factura', 'Proveedor', 'CIF/NIF', 'Concepto', 'Base imponible', 'Tipo de IVA', 'Cuota IVA', 'Total Factura']
             df = pd.DataFrame(list_bills)
             df.to_excel(path_excel, index=False, engine='openpyxl')
+
             
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error inesperado: {e}")
